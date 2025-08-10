@@ -1,0 +1,26 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { return isSignedIn() && request.auth.token.admin == true; }
+
+    match /parks/{parkId} {
+      allow read: if true;
+      // Only admin can create or edit parks
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Users track visited parks privately under their profile
+    match /users/{uid}/visited/{parkId} {
+      allow read, write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Public photos metadata (optional): anyone signed-in can add, only owner can update/delete
+    match /parkPhotos/{parkId}/{photoId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+    }
+  }
+}

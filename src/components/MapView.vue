@@ -6,7 +6,6 @@
 </template>
 
 <script setup>
-// Intentionally a visual stub. Replace with MapLibre GL JS when ready.
 </script>
 
 <style scoped>

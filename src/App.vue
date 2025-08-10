@@ -1,18 +1,22 @@
 <template>
   <div class="app">
-    <AppHeader />
+    <AppHeader @open-auth="showAuth = true" />
     <main class="container">
       <HomeView />
     </main>
+    <AuthModal v-if="showAuth" @close="showAuth = false" />
   </div>
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import AppHeader from './components/AppHeader.vue'
 import HomeView from './pages/HomeView.vue'
+import AuthModal from './components/AuthModal.vue'
+
+const showAuth = ref(false)
 </script>
 
 <style>
-.app { background: radial-gradient(1200px 800px at 20% -20%, #13223a 0%, var(--bg) 48%); min-height: 100vh; color: var(--text); }
-.container { max-width: 1040px; margin: 0 auto; padding: 16px; }
+.app { min-height: 100vh; color: var(--text); }
 </style>

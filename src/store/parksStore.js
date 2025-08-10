@@ -25,7 +25,6 @@ export const useParksStore = defineStore('parks', {
       else this.visited.push(id)
       localStorage.setItem('visitedParks', JSON.stringify(this.visited))
     },
-    // bootstrap with a few demo parks; replace with Overpass/Firestore importer
     bootstrapDemo(){
       if(this.parks.length) return
       this.parks = [

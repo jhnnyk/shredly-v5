@@ -5,5 +5,10 @@ import './styles/tokens.css'
 import './styles/utils.css'
 
 const app = createApp(App)
-app.use(createPinia())
+const pinia = createPinia()
+app.use(pinia)
+
+import { useAuthStore } from './store/authStore'
+useAuthStore().init()
+
 app.mount('#app')

@@ -5,15 +5,27 @@
         <div class="logo-mark"></div>
         <div class="logo-type">Shredly</div>
       </div>
-      <div class="nav-actions flex g-8">
-        <button class="btn btn-ghost">Log in</button>
-        <button class="btn btn-primary">Add a park</button>
+      <div class="nav-actions flex g-8 items-center">
+        <span v-if="auth.user" class="hide-sm" style="color:var(--text-2); font-size:13px;">
+          Hi, {{ auth.user.email }}
+          <span v-if="auth.isAdmin" class="badge">admin</span>
+        </span>
+        <button v-if="auth.isAdmin" class="btn btn-primary" @click="addPark">Add a park</button>
+        <button v-if="!auth.user" class="btn btn-ghost" @click="$emit('open-auth')">Log in</button>
+        <button v-else class="btn btn-ghost" @click="auth.logout">Log out</button>
       </div>
     </div>
   </header>
 </template>
 
 <script setup>
+import { useAuthStore } from '../store/authStore'
+
+const auth = useAuthStore()
+
+function addPark(){
+  alert('Admin-only: open park editor (stub)')
+}
 </script>
 
 <style scoped>

@@ -1,76 +1,40 @@
-# Shredly — Starter A (Vue 3, no TS, plain CSS)
+# Shredly — Auth Upgrade (Email/Password + Admin)
 
-Mobile‑first, lightweight starter for the skatepark app. No TypeScript, no Tailwind — just Vue 3 + Pinia and CSS design tokens.
+This adds Firebase Auth with email/password, an Auth modal, and **admin-only** park editing.
 
-## Quick start
+## Setup
+1) Install deps:
 ```bash
 npm i
-npm run dev
 ```
 
-## What’s inside
-- **Vue 3 + Vite** (no TS)
-- **Pinia** store with localStorage tracking for visited parks (works offline)
-- **Design tokens** in `src/styles/tokens.css`, tiny utilities in `src/styles/utils.css`
-- **Components**: `AppHeader`, `ParkCard`, `MapView` (stub)
-- **Page**: `HomeView` with search, demo cards, and map placeholder
-- **Fonts**: Karla (UI), Sedgwick Ave Display (park names), Sonsie One (logo)
+2) Create a Firebase project and update `src/lib/firebase.js` with your config.
 
-## Where to add real data
-- Replace `bootstrapDemo()` in `src/store/parksStore.js` with your importer (Overpass → Firestore).
-- For Firebase, uncomment `src/lib/firebase.js` and wire into your stores/components.
-
-## Color & theme
-Tokens are in CSS variables — easy to tweak:
-```css
-:root{ --bg:#101827; --accent:#ff3ea5; /* etc */ }
-```
-
-## Suggested Firestore structure (later)
-```
-/parks/{parkId} {
-  name, address, lat, lng, sizeSqft, builder, openedYear, hours, tags[], osmId,
-  geohash, createdAt, updatedAt
-}
-/users/{uid}/visited/{parkId} { visitedAt }
-```
-You can keep the public “visited” count as an aggregate field on `/parks` via a Cloud Function.
-
-## Basic rules (sketch)
-```
-// firestore.rules
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /parks/{parkId} {
-      allow read: if true;
-      allow create, update: if request.auth != null; // or stricter moderation
-    }
-    match /users/{uid}/visited/{parkId} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
-    }
-  }
-}
-```
-
-```
-// storage.rules
-rules_version = '2';
-service firebase.storage {
-  match /b/{bucket}/o {
-    match /parkPhotos/{parkId}/{imageId} {
-      allow read: if true; // public
-      allow write: if request.auth != null; // add size/type checks
-    }
-  }
-}
-```
-
-## Map
-Swap `components/MapView.vue` with MapLibre when ready:
+3) Deploy rules (or use Emulator while developing):
 ```bash
-npm i maplibre-gl
+firebase deploy --only firestore:rules,storage:rules
+# or with emulator: firebase emulators:start
 ```
-Then mount a map using your tokens (dark background + pink markers).
 
-–– Have fun!
+4) Create your personal account in the app (Sign up in the modal), get your UID from Firebase Console → Authentication.
+
+5) Grant yourself admin:
+```bash
+# put a serviceAccount.json in project root (Service Accounts → Generate new key)
+export GOOGLE_APPLICATION_CREDENTIALS=./serviceAccount.json
+npm run set-admin -- --uid YOUR_UID
+```
+
+6) Sign out and back in — your token will now include `admin: true`.
+
+## What changed
+- `AuthModal.vue`: email/password login & signup
+- `authStore.js`: listens to auth state, loads custom claims, exposes `isAdmin`
+- `AppHeader.vue`: shows login/logout; gates "Add a park" button to admins
+- `firestore.rules`: only admin can write `/parks`; users can manage their own `/users/{uid}/visited/*`
+- `storage.rules`: any signed-in user can upload images to `/parkPhotos/{parkId}/*` (public read)
+
+## Next
+- Park editor page (admin-only) writing to `/parks/{id}`
+- Photo uploader component → Firebase Storage (with resize function to WebP/AVIF)
+- MapLibre integration for real map view

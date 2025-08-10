@@ -43,6 +43,5 @@ defineProps({
 .body{ padding:14px; display:grid; gap:10px; }
 .name{ font-family:"Sedgwick Ave Display", cursive; font-size:22px; letter-spacing:.2px; }
 .meta{ display:flex; gap:10px; flex-wrap:wrap; font-size:13px; color:var(--text-2); }
-.badge{ padding:4px 10px; border-radius:999px; background:#0f1d32; border:1px solid #203251; color:var(--text-2); margin-right:6px; }
 .actions{ display:flex; gap:10px; }
 </style>
