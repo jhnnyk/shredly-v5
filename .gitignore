@@ -1,0 +1,28 @@
+# dependencies
+/node_modules
+
+# build outputs
+/dist
+/build
+
+# local environment variables
+.env
+.env.*.local
+
+# editor/IDE specific files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs/
+*.log
+
+# misc
+.DS_Store
+Thumbs.db
