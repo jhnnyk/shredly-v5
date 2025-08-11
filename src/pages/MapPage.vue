@@ -49,7 +49,7 @@
         :tags="p.tags"
         :visited="visited.has(p.id)"
         @toggleVisited="toggleVisited(p.id)"
-        @details="openDetails(p.id)"
+        @details="openPark(p.id)"
       />
     </div>
   </section>
@@ -125,14 +125,16 @@ const nearest = computed(() => {
 function toggleVisited(id) {
   store.toggleVisited(id)
 }
-function openDetails(id) {
-  alert('Details stub for ' + id)
-}
 
-function openPark(id) {
+async function openPark(id) {
   selectedId.value = id
-  if (route.name !== 'park' || route.params.id !== id) {
-    router.replace({ name: 'park', params: { id }, query: route.query }) // deep link without full nav
+  const p = store.byId(id) || (await store.loadOne(id))
+  if (p && map) {
+    map.easeTo({
+      center: [p.lng, p.lat],
+      zoom: Math.max(map.getZoom(), 13),
+      duration: 500,
+    })
   }
 }
 
