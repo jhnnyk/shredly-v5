@@ -56,22 +56,10 @@
         </button>
       </div>
 
-      <div
-        class="mt-8"
-        v-if="error"
-        role="alert"
-        aria-live="assertive"
-        class="error"
-      >
+      <div class="mt-8 error" v-if="error" role="alert" aria-live="assertive">
         {{ error }}
       </div>
-      <div
-        class="mt-8"
-        v-if="message"
-        role="status"
-        aria-live="polite"
-        class="success"
-      >
+      <div class="mt-8 success" v-if="message" role="status" aria-live="polite">
         {{ message }}
       </div>
     </div>
