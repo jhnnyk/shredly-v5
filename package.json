@@ -1,7 +1,7 @@
 {
-  "name": "shredly-starter-a-auth",
+  "name": "shredly",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,7 +12,8 @@
   "dependencies": {
     "firebase": "^10.12.5",
     "pinia": "^2.2.6",
-    "vue": "^3.4.38"
+    "vue": "^3.4.38",
+    "vue-router": "^4.4.5"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.1.2",

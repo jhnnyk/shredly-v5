@@ -15,7 +15,7 @@ export const useAuthStore = defineStore('auth', {
     user: null,
     isAdmin: false,
     loading: true,
-    profile: null, // { displayName, photoURL, visitedCount, photoCount, joinedAt }
+    profile: null,
   }),
   getters: {
     displayName: (s) => s.profile?.displayName || s.user?.displayName || null,
@@ -29,8 +29,6 @@ export const useAuthStore = defineStore('auth', {
         if (u) {
           const token = await getIdTokenResult(u, /* forceRefresh */ true)
           this.isAdmin = !!token.claims.admin
-
-          // load (or create) profile doc
           const ref = doc(db, 'users', u.uid)
           const snap = await getDoc(ref)
           if (!snap.exists()) {
@@ -58,9 +56,8 @@ export const useAuthStore = defineStore('auth', {
     },
     async signup(email, password, rawDisplayName) {
       const dn = (rawDisplayName || '').trim().replace(/\s+/g, ' ')
-      if (dn.length < 2 || dn.length > 30) {
+      if (dn.length < 2 || dn.length > 30)
         throw new Error('Display name must be 2–30 characters.')
-      }
       const cred = await createUserWithEmailAndPassword(auth, email, password)
       await updateProfile(cred.user, { displayName: dn })
       const ref = doc(db, 'users', cred.user.uid)

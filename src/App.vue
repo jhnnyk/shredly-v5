@@ -1,22 +1,24 @@
 <template>
   <div class="app">
-    <AppHeader @open-auth="showAuth = true" />
+    <AppHeader @open-auth="goLogin" />
     <main class="container">
-      <HomeView />
+      <router-view />
     </main>
-    <AuthModal v-if="showAuth" @close="showAuth = false" />
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
 import AppHeader from './components/AppHeader.vue'
-import HomeView from './pages/HomeView.vue'
-import AuthModal from './components/AuthModal.vue'
-
-const showAuth = ref(false)
+import { useRouter } from 'vue-router'
+const router = useRouter()
+function goLogin() {
+  router.push({ name: 'home', query: { login: '1' } })
+}
 </script>
 
 <style>
-.app { min-height: 100vh; color: var(--text); }
+.app {
+  min-height: 100vh;
+  color: var(--text);
+}
 </style>

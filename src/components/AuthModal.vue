@@ -13,7 +13,7 @@
         <input
           class="input"
           v-model="displayName"
-          placeholder="e.g., shredder_45"
+          placeholder="e.g., John K."
           autocomplete="nickname"
           required
         />
@@ -28,7 +28,6 @@
           autocomplete="email"
         />
       </div>
-
       <div class="mt-8">
         <label>Password</label>
         <input
@@ -57,10 +56,22 @@
         </button>
       </div>
 
-      <div class="mt-8 error" v-if="error" role="alert" aria-live="assertive">
+      <div
+        class="mt-8"
+        v-if="error"
+        role="alert"
+        aria-live="assertive"
+        class="error"
+      >
         {{ error }}
       </div>
-      <div class="mt-8 success" v-if="message" role="status" aria-live="polite">
+      <div
+        class="mt-8"
+        v-if="message"
+        role="status"
+        aria-live="polite"
+        class="success"
+      >
         {{ message }}
       </div>
     </div>
@@ -114,10 +125,29 @@ function toggle() {
 </script>
 
 <style scoped>
-label {
-  display: block;
-  margin: 0 0 6px;
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+.modal {
+  width: min(92vw, 420px);
+  background: var(--bg-elev);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-1);
+  padding: 16px;
+}
+.error {
+  color: #ff9bbf;
   font-size: 13px;
-  color: var(--text-2);
+}
+.success {
+  color: #86efac;
+  font-size: 13px;
 }
 </style>

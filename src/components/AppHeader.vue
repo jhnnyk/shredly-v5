@@ -3,9 +3,18 @@
     <div class="nav-row container flex items-center justify-between g-12">
       <div class="brand flex items-center g-12">
         <div class="logo-mark"></div>
-        <div class="logo-type">Shredly</div>
+        <router-link to="/" class="logo-type" style="text-decoration: none"
+          >Shredly</router-link
+        >
       </div>
       <div class="nav-actions flex g-8 items-center">
+        <router-link class="btn btn-ghost hide-sm" to="/">Home</router-link>
+        <router-link
+          v-if="auth.isAdmin"
+          class="btn btn-ghost hide-sm"
+          to="/admin/parks"
+          >Admin</router-link
+        >
         <span
           v-if="auth.user"
           class="hide-sm"
@@ -14,9 +23,12 @@
           Hi, {{ auth.displayName || 'Shredder' }}
           <span v-if="auth.isAdmin" class="badge">admin</span>
         </span>
-        <button v-if="auth.isAdmin" class="btn btn-primary" @click="addPark">
-          Add a park
-        </button>
+        <router-link
+          v-if="auth.isAdmin"
+          class="btn btn-primary"
+          :to="{ name: 'adminParkEditor', params: { id: 'new' } }"
+          >Add a park</router-link
+        >
         <button
           v-if="!auth.user"
           class="btn btn-ghost"
@@ -34,12 +46,7 @@
 
 <script setup>
 import { useAuthStore } from '../store/authStore'
-
 const auth = useAuthStore()
-
-function addPark() {
-  alert('Admin-only: open park editor (stub)')
-}
 </script>
 
 <style scoped>
