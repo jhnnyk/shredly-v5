@@ -32,6 +32,7 @@
         v-for="p in nearest"
         :key="p.id"
         :name="p.name"
+        :status="p.status || 'open'"
         :cityState="(p.city || '') + (p.state ? ', ' + p.state : '')"
         :size="p.sizeSqft"
         :builder="p.builder"
