@@ -1,28 +1,13 @@
-/**
- * One-time script to grant 'admin' custom claim to a user by UID.
- * Usage:
- *   export GOOGLE_APPLICATION_CREDENTIALS=./serviceAccount.json
- *   npm run set-admin -- --uid YOUR_UID
- */
-import 'firebase-admin/auth'
 import admin from 'firebase-admin'
-
-const args = Object.fromEntries(process.argv.slice(2).map(a => a.split('=').map(s=>s.replace(/^--/,''))))
-const uid = args.uid || process.env.ADMIN_UID
-if(!uid){
-  console.error('Provide --uid YOUR_UID or set ADMIN_UID env var.')
-  process.exit(1)
+if (!admin.apps.length) admin.initializeApp({})
+const args = process.argv.slice(2)
+let uid = process.env.ADMIN_UID || null
+for (let i=0;i<args.length;i++){
+  const a = args[i]
+  if (a.startsWith('--uid=')) uid = a.split('=')[1]
+  else if (a === '--uid') uid = args[++i]
 }
-
-if(!admin.apps.length){
-  admin.initializeApp({})
-}
-
-try{
-  await admin.auth().setCustomUserClaims(uid, { admin: true })
-  console.log('✅ Set admin=true for uid:', uid)
-  process.exit(0)
-} catch(e){
-  console.error('❌ Error setting admin claim:', e)
-  process.exit(1)
-}
+if(!uid){ console.error('Provide --uid=YOUR_UID or set ADMIN_UID'); process.exit(1) }
+await admin.auth().setCustomUserClaims(uid, { admin: true })
+console.log('✅ Set admin=true for uid:', uid)
+process.exit(0)

@@ -1,7 +1,7 @@
 {
-  "name": "shredly",
+  "name": "shredly-bottomnav",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,7 +13,8 @@
     "firebase": "^10.12.5",
     "pinia": "^2.2.6",
     "vue": "^3.4.38",
-    "vue-router": "^4.4.5"
+    "vue-router": "^4.4.5",
+    "maplibre-gl": "^4.3.2"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.1.2",

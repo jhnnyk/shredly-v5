@@ -1,12 +1,8 @@
 import { defineStore } from 'pinia'
 import { auth, db } from '../lib/firebase'
 import {
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut,
-  getIdTokenResult,
-  updateProfile,
+  onAuthStateChanged, signInWithEmailAndPassword,
+  createUserWithEmailAndPassword, signOut, getIdTokenResult, updateProfile
 } from 'firebase/auth'
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 
@@ -21,17 +17,17 @@ export const useAuthStore = defineStore('auth', {
     displayName: (s) => s.profile?.displayName || s.user?.displayName || null,
   },
   actions: {
-    async init() {
-      if (this._inited) return
+    async init(){
+      if(this._inited) return
       this._inited = true
       onAuthStateChanged(auth, async (u) => {
         this.user = u
-        if (u) {
+        if(u){
           const token = await getIdTokenResult(u, /* forceRefresh */ true)
           this.isAdmin = !!token.claims.admin
           const ref = doc(db, 'users', u.uid)
           const snap = await getDoc(ref)
-          if (!snap.exists()) {
+          if(!snap.exists()){
             const base = {
               displayName: u.displayName || '',
               photoURL: u.photoURL || '',
@@ -51,30 +47,15 @@ export const useAuthStore = defineStore('auth', {
         this.loading = false
       })
     },
-    async login(email, password) {
-      await signInWithEmailAndPassword(auth, email, password)
-    },
-    async signup(email, password, rawDisplayName) {
-      const dn = (rawDisplayName || '').trim().replace(/\s+/g, ' ')
-      if (dn.length < 2 || dn.length > 30)
-        throw new Error('Display name must be 2–30 characters.')
+    async login(email, password){ await signInWithEmailAndPassword(auth, email, password) },
+    async signup(email, password, rawDisplayName){
+      const dn = (rawDisplayName || '').trim().replace(/\s+/g,' ')
+      if(dn.length < 2 || dn.length > 30) throw new Error('Display name must be 2–30 characters.')
       const cred = await createUserWithEmailAndPassword(auth, email, password)
       await updateProfile(cred.user, { displayName: dn })
       const ref = doc(db, 'users', cred.user.uid)
-      await setDoc(
-        ref,
-        {
-          displayName: dn,
-          photoURL: '',
-          visitedCount: 0,
-          photoCount: 0,
-          joinedAt: serverTimestamp(),
-        },
-        { merge: true }
-      )
+      await setDoc(ref, { displayName: dn, photoURL: '', visitedCount: 0, photoCount: 0, joinedAt: serverTimestamp() }, { merge: true })
     },
-    async logout() {
-      await signOut(auth)
-    },
-  },
+    async logout(){ await signOut(auth) }
+  }
 })

@@ -1,48 +1,34 @@
 import { defineStore } from 'pinia'
 import { db } from '../lib/firebase'
 import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  setDoc,
-  updateDoc,
+  deleteDoc, doc, getDoc, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, collection
 } from 'firebase/firestore'
 
-function slugify(str) {
-  return (str || '')
-    .toString()
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)+/g, '')
+function slugify(str){
+  return (str || '').toString().toLowerCase().trim()
+    .replace(/[^a-z0-9]+/g,'-')
+    .replace(/(^-|-$)+/g,'')
     .slice(0, 80)
 }
 
 export const useAdminParksStore = defineStore('parksAdmin', {
   state: () => ({
     parks: [],
-    unsub: null,
+    unsub: null
   }),
   actions: {
-    subscribe() {
-      if (this.unsub) return
+    subscribe(){
+      if(this.unsub) return
       const qref = query(collection(db, 'parks'), orderBy('name'))
-      this.unsub = onSnapshot(qref, (snap) => {
-        this.parks = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      this.unsub = onSnapshot(qref, snap => {
+        this.parks = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       })
     },
-    async getPark(id) {
+    async getPark(id){
       const snap = await getDoc(doc(db, 'parks', id))
       return snap.exists() ? { id: snap.id, ...snap.data() } : null
     },
-    async createPark(data) {
-      // prefer slug id if unique; else use auto id
+    async createPark(data){
       const id = slugify(data.name || '') || undefined
       const ref = id ? doc(db, 'parks', id) : doc(collection(db, 'parks'))
       const payload = {
@@ -63,7 +49,7 @@ export const useAdminParksStore = defineStore('parksAdmin', {
       await setDoc(ref, payload)
       return ref.id
     },
-    async updatePark(id, data) {
+    async updatePark(id, data){
       const ref = doc(db, 'parks', id)
       const payload = {
         name: data.name || '',
@@ -81,8 +67,8 @@ export const useAdminParksStore = defineStore('parksAdmin', {
       }
       await updateDoc(ref, payload)
     },
-    async deletePark(id) {
+    async deletePark(id){
       await deleteDoc(doc(db, 'parks', id))
-    },
-  },
+    }
+  }
 })
