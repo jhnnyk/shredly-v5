@@ -19,6 +19,15 @@
       </div>
     </div>
 
+    <ParkSheet
+      v-if="showSheet"
+      :park="selectedPark"
+      :visited="visited.has(selectedId)"
+      :photos="selectedPark?.photos || []"
+      @toggleVisited="toggleVisited(selectedId)"
+      @close="closeSheet"
+    />
+
     <div class="section-title">Nearest skateparks</div>
     <div
       ref="listEl"
@@ -49,7 +58,12 @@
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import ParkCard from '../components/ParkCard.vue'
+import { useRoute, useRouter } from 'vue-router'
+import ParkSheet from '../components/ParkSheet.vue'
+
 import { useParksStore } from '../store/parksStore'
+const route = useRoute()
+const router = useRouter()
 
 const store = useParksStore()
 const mapEl = ref(null)
@@ -57,6 +71,11 @@ const listEl = ref(null)
 const mapReady = ref(false)
 const center = ref({ lat: 39.5, lng: -98.35 }) // US fallback
 const hasUserLoc = ref(false)
+const selectedId = ref(null)
+const selectedPark = computed(() =>
+  selectedId.value ? store.byId(selectedId.value) : null
+)
+const showSheet = computed(() => !!selectedPark.value)
 let map, maplibre
 let userMarker = null
 let parkMarkers = []
@@ -108,6 +127,20 @@ function toggleVisited(id) {
 }
 function openDetails(id) {
   alert('Details stub for ' + id)
+}
+
+function openPark(id) {
+  selectedId.value = id
+  if (route.name !== 'park' || route.params.id !== id) {
+    router.replace({ name: 'park', params: { id }, query: route.query }) // deep link without full nav
+  }
+}
+
+function closeSheet() {
+  selectedId.value = null
+  if (route.name === 'park') {
+    router.replace({ name: 'map', query: route.query })
+  }
 }
 
 async function initMap() {
@@ -214,6 +247,8 @@ function drawParkMarkers() {
 
   for (const p of nearest.value) {
     const el = makeParkPin()
+    el.style.cursor = 'pointer'
+    el.addEventListener('click', () => openPark(p.id))
     el.title = p.name
     const mk = new maplibre.Marker({ element: el, anchor: 'bottom' })
       .setLngLat([p.lng, p.lat])
@@ -227,10 +262,7 @@ function drawParkMarkers() {
         }${p.state ? `, ${p.state}` : ''}</div>
         <button data-id="${p.id}" class="popup-btn">Mark visited</button>
       </div>`
-    const pop = new maplibre.Popup({ closeButton: true, offset: 18 }).setHTML(
-      html
-    )
-    mk.setPopup(pop)
+
     parkMarkers.push(mk)
   }
 
@@ -304,7 +336,7 @@ function locateMe() {
 
 /* --- LIFECYCLE --- */
 
-onMounted(() => {
+onMounted(async () => {
   store.start()
   // Prime nearest calc before map load
   if (navigator.geolocation) {
@@ -318,6 +350,13 @@ onMounted(() => {
     )
   }
   initMap()
+
+  // deep-link: /park/:id opens the sheet
+  if (route.name === 'park' && route.params.id) {
+    const id = String(route.params.id)
+    const p = await store.loadOne(id)
+    if (p) selectedId.value = id
+  }
 })
 
 watch(
