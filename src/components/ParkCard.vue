@@ -1,17 +1,18 @@
 <template>
   <article class="card">
+    <!-- STAMP: only when status is not open -->
+    <div
+      v-if="status && status !== 'open'"
+      class="status-stamp"
+      :class="'status-' + status"
+      :aria-label="status === 'construction' ? 'Under construction' : 'Closed'"
+    >
+      {{ status === 'construction' ? 'Under construction' : 'Closed' }}
+    </div>
+
     <div class="card-media"></div>
     <div class="body">
       <div class="name">{{ name }}</div>
-      <div v-if="status && status !== 'open'" class="status-row">
-        <span class="badge" :class="'status-' + status">
-          {{
-            status === 'construction'
-              ? 'Under construction'
-              : status[0].toUpperCase() + status.slice(1)
-          }}
-        </span>
-      </div>
       <div class="meta">
         <span>📍 {{ cityState }}</span>
         <span v-if="size">📏 {{ Number(size).toLocaleString() }} sqft</span>
@@ -76,18 +77,50 @@ defineProps({
   display: flex;
   gap: 10px;
 }
-.status-row {
-  margin-top: -6px;
-  margin-bottom: 2px;
+
+/* Make the card a positioning context for the stamp */
+:deep(.card),
+.card {
+  position: relative;
 }
-.badge.status-closed {
-  background: #3b111d;
-  border-color: #6b1a2a;
+
+/* Rubber-stamp style */
+.status-stamp {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  font-family: 'Protest Guerrilla', system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 6px 10px;
+  border-radius: 8px;
+  transform: rotate(6deg);
+  font-size: 18px;
+  line-height: 1;
+  user-select: none;
+  /* subtle distressed feel */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(1px);
+}
+@media (min-width: 640px) {
+  .status-stamp {
+    font-size: 20px;
+    transform: rotate(8deg);
+  }
+}
+
+/* Colorways (reuse your earlier palette, but as translucent stamps) */
+.status-stamp.status-closed {
   color: #ff99b1;
+  background: rgba(59, 17, 29, 0.45);
+  border: 2px solid #6b1a2a;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
 }
-.badge.status-construction {
-  background: #2c2a14;
-  border-color: #5a5520;
+.status-stamp.status-construction {
   color: #ffef9a;
+  background: rgba(44, 42, 20, 0.45);
+  border: 2px solid #5a5520;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.22);
 }
 </style>
