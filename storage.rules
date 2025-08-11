@@ -1,12 +1,19 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Publicly readable park photos; only signed-in users may upload
+
+    // Publicly readable park photos. Signed-in users can upload.
     match /parkPhotos/{parkId}/{imageId} {
+      // Anyone can view photos
       allow read: if true;
+
+      // Only signed-in users may upload; limit size/type; require credit metadata
       allow write: if request.auth != null
         && request.resource.size < 10 * 1024 * 1024 // <= 10MB
-        && request.resource.contentType.matches('image/.*');
+        && request.resource.contentType.matches('image/.*')
+        && request.resource.metadata.uid == request.auth.uid
+        && request.resource.metadata.displayName is string
+        && request.resource.metadata.displayName.matches('^.{2,30}$');
     }
   }
 }
