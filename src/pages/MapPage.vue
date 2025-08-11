@@ -1,13 +1,33 @@
+<!-- src/pages/MapPage.vue -->
 <template>
   <section>
     <div class="card map-card">
       <div class="map-wrap" ref="mapEl">
         <div v-if="!mapReady" class="map-placeholder">Map loading…</div>
+
+        <!-- overlay UI -->
+        <div class="map-ui">
+          <!-- <div class="map-legend">
+            <span class="dot you"></span> You
+            <span class="dot park"></span> Skatepark
+          </div> -->
+          <div class="map-actions">
+            <button class="map-btn" @click="locateMe">Locate me</button>
+            <!-- <button class="map-btn primary" @click="fitToContent">Fit</button> -->
+          </div>
+        </div>
       </div>
     </div>
 
     <div class="section-title">Nearest skateparks</div>
-    <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap:16px;">
+    <div
+      ref="listEl"
+      class="grid nearest-list"
+      style="
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 16px;
+      "
+    >
       <ParkCard
         v-for="p in nearest"
         :key="p.id"
@@ -26,102 +46,410 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import ParkCard from '../components/ParkCard.vue'
 import { useParksStore } from '../store/parksStore'
 
 const store = useParksStore()
 const mapEl = ref(null)
+const listEl = ref(null)
 const mapReady = ref(false)
-const center = ref({ lat: 39.5, lng: -98.35 }) // US centroid fallback
+const center = ref({ lat: 39.5, lng: -98.35 }) // US fallback
 const hasUserLoc = ref(false)
 let map, maplibre
+let userMarker = null
+let parkMarkers = []
 
-function haversine(a, b){
-  const toRad = (x) => x * Math.PI / 180
-  const R = 6371 // km
+// OSM raster with labels (tokenless)
+const OSM_RASTER_STYLE = {
+  version: 8,
+  sources: {
+    osm: {
+      type: 'raster',
+      tiles: [
+        'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      ],
+      tileSize: 256,
+      attribution: '© OpenStreetMap contributors',
+    },
+  },
+  layers: [{ id: 'base', type: 'raster', source: 'osm' }],
+}
+
+function haversine(a, b) {
+  const toRad = (x) => (x * Math.PI) / 180
+  const R = 6371
   const dLat = toRad(b.lat - a.lat)
   const dLon = toRad(b.lng - a.lng)
-  const s = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.sin(dLon/2)*Math.sin(dLon/2)
-  const c = 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1-s))
-  return R * c
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLon / 2) ** 2
+  return 2 * R * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s))
 }
 
 const visited = computed(() => store.visitedSet)
 const nearest = computed(() => {
   const parks = store.parks || []
-  const distances = parks
-    .filter(p => typeof p.lat === 'number' && typeof p.lng === 'number')
-    .map(p => ({ ...p, _d: haversine(center.value, { lat: p.lat, lng: p.lng }) }))
-    .sort((a,b) => a._d - b._d)
-    .slice(0, 24)
-  return distances
+  return parks
+    .filter((p) => typeof p.lat === 'number' && typeof p.lng === 'number')
+    .map((p) => ({
+      ...p,
+      _d: haversine(center.value, { lat: p.lat, lng: p.lng }),
+    }))
+    .sort((a, b) => a._d - b._d)
+    .slice(0, 50)
 })
 
-function toggleVisited(id){ store.toggleVisited(id) }
-function openDetails(id){ alert('Details stub for ' + id) }
+function toggleVisited(id) {
+  store.toggleVisited(id)
+}
+function openDetails(id) {
+  alert('Details stub for ' + id)
+}
 
-async function initMap(){
+async function initMap() {
   try {
     maplibre = await import('maplibre-gl')
     map = new maplibre.Map({
       container: mapEl.value,
-      style: 'https://demotiles.maplibre.org/style.json',
+      style: OSM_RASTER_STYLE,
       center: [center.value.lng, center.value.lat],
-      zoom: hasUserLoc.value ? 11 : 4
+      zoom: hasUserLoc.value ? 12.5 : 5.5,
+      attributionControl: false,
     })
-    map.addControl(new maplibre.NavigationControl({ visualizePitch: true }))
+    map.addControl(
+      new maplibre.NavigationControl({ visualizePitch: true }),
+      'top-right'
+    )
+    map.addControl(
+      new maplibre.AttributionControl({ compact: true }),
+      'bottom-right'
+    )
+    map.addControl(
+      new maplibre.ScaleControl({ maxWidth: 120, unit: 'imperial' })
+    )
+
     map.on('load', () => {
       mapReady.value = true
-      drawMarkers()
+      placeUserMarker()
+      drawParkMarkers()
+      nextTick(() => fitToContent(10))
     })
-  } catch (e){
-    console.warn('MapLibre failed, fallback to placeholder', e)
+  } catch (e) {
+    console.warn('Map failed; showing placeholder', e)
     mapReady.value = false
   }
 }
 
-function drawMarkers(){
-  if(!map || !maplibre) return
-  (window.__markers || []).forEach(m => m.remove())
-  window.__markers = []
+/* --- MARKERS --- */
 
-  if(hasUserLoc.value){
-    const el = document.createElement('div')
-    el.style.width = '14px'; el.style.height = '14px'; el.style.borderRadius = '50%'
-    el.style.background = 'var(--accent)'
-    el.style.boxShadow = '0 0 0 0 rgba(255,62,165,.6)'
-    el.style.animation = 'pulse 2.2s infinite'
-    window.__markers.push(new maplibre.Marker({ element: el }).setLngLat([center.value.lng, center.value.lat]).addTo(map))
-  }
+// Pink pulsing user dot
+function makeUserDot() {
+  const outer = document.createElement('div')
+  outer.style.width = '14px'
+  outer.style.height = '14px'
+  outer.style.borderRadius = '50%'
+  outer.style.background = 'var(--accent)'
+  outer.style.border = '2px solid #ff9bcc55'
+  outer.style.boxShadow = '0 2px 4px rgba(0,0,0,.45)'
+  outer.style.position = 'relative'
 
-  const parks = nearest.value
-  for(const p of parks){
-    const el = document.createElement('div')
-    el.style.width = '10px'; el.style.height = '10px'; el.style.borderRadius = '50%'
-    el.style.background = '#a8c7ff'
-    el.style.border = '1px solid #fff2'
-    el.title = p.name
-    const mk = new maplibre.Marker({ element: el }).setLngLat([p.lng, p.lat]).addTo(map)
-    window.__markers.push(mk)
-  }
+  // pulsing ring (uses global CSS above)
+  const pulse = document.createElement('div')
+  pulse.className = 'pulse-ring'
+  outer.appendChild(pulse)
+
+  return outer
 }
+
+function placeUserMarker() {
+  if (!map || !maplibre || !hasUserLoc.value) return
+  if (userMarker) {
+    userMarker.remove()
+    userMarker = null
+  }
+  userMarker = new maplibre.Marker({ element: makeUserDot() })
+    .setLngLat([center.value.lng, center.value.lat])
+    .addTo(map)
+}
+
+// Blue pin with skateboard
+function makeParkPin() {
+  const el = document.createElement('div')
+  el.style.width = '32px' // was 30
+  el.style.height = '40px' // was 38
+  el.style.transform = 'translateY(-2px)'
+  el.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,.45))'
+
+  const PIN = '#5ea2ff' // slightly darker blue
+
+  el.innerHTML = `
+  <svg viewBox="0 0 24 24" width="32" height="40" aria-hidden="true">
+    <!-- solid pin, no border -->
+    <path d="M12 2c-3.86 0-7 3.14-7 7 0 4.9 5.2 10.9 6.57 12.4a.6.6 0 0 0 .86 0C13.8 19.9 19 13.9 19 9c0-3.86-3.14-7-7-7z"
+      fill="${PIN}"/>
+
+    <!-- wheels + deck (white) — scaled to keep same visual size as before -->
+    <g transform="translate(12,10) scale(0.245) translate(-33.5,-32.95)" fill="none">
+      <circle cx="20"  cy="41.9" r="3" fill="#fff"/>
+      <circle cx="47.3" cy="35.9" r="3" fill="#fff"/>
+      <path d="M55,24
+               c0,0 -3,4.8 -7,5.6
+               c0,0 -27.3,6  -31.3,6.9
+               c-3.9,0.9 -8.7,-2.2 -8.7,-2.2"
+            stroke="#fff" stroke-width="1.6" vector-effect="non-scaling-stroke"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </svg>`
+  return el
+}
+
+function drawParkMarkers() {
+  if (!map || !maplibre) return
+  parkMarkers.forEach((m) => m.remove())
+  parkMarkers = []
+
+  for (const p of nearest.value) {
+    const el = makeParkPin()
+    el.title = p.name
+    const mk = new maplibre.Marker({ element: el, anchor: 'bottom' })
+      .setLngLat([p.lng, p.lat])
+      .addTo(map)
+
+    const html = `
+      <div style="min-width:180px">
+        <div style="font-weight:700;margin-bottom:4px">${p.name}</div>
+        <div style="color:#aab6c9;font-size:12px;margin-bottom:6px">${
+          p.city || ''
+        }${p.state ? `, ${p.state}` : ''}</div>
+        <button data-id="${p.id}" class="popup-btn">Mark visited</button>
+      </div>`
+    const pop = new maplibre.Popup({ closeButton: true, offset: 18 }).setHTML(
+      html
+    )
+    mk.setPopup(pop)
+    parkMarkers.push(mk)
+  }
+
+  // Delegate clicks in popups
+  map.on('popupopen', () => {
+    document.querySelectorAll('.popup-btn').forEach((btn) => {
+      btn.onclick = (e) =>
+        toggleVisited(e.currentTarget.getAttribute('data-id'))
+    })
+  })
+}
+
+/* --- CAMERA --- */
+
+let fitTick = null
+function fitToContent(count = 10) {
+  if (!map || !maplibre) return
+  cancelAnimationFrame(fitTick)
+  fitTick = requestAnimationFrame(() => {
+    const parks = (nearest.value || [])
+      .slice(0, count)
+      .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng))
+    if (!parks.length) return
+
+    // Minimal padding since the list is below the map
+    const padding = { top: 20, right: 20, bottom: 20, left: 20 }
+
+    if (hasUserLoc.value) {
+      // Keep user centered: symmetric bounds around location
+      let dx = 0,
+        dy = 0
+      for (const p of parks) {
+        dx = Math.max(dx, Math.abs(p.lng - center.value.lng))
+        dy = Math.max(dy, Math.abs(p.lat - center.value.lat))
+      }
+      if (dx === 0) dx = 0.01
+      if (dy === 0) dy = 0.01
+      const expand = 1.12
+      const bounds = new maplibre.LngLatBounds(
+        [center.value.lng - dx * expand, center.value.lat - dy * expand],
+        [center.value.lng + dx * expand, center.value.lat + dy * expand]
+      )
+      map.fitBounds(bounds, { padding, maxZoom: 14, duration: 500 })
+    } else {
+      // No user loc yet → fit parks and zoom in a bit
+      const bounds = new maplibre.LngLatBounds()
+      parks.forEach((p) => bounds.extend([p.lng, p.lat]))
+      map.fitBounds(bounds, { padding, maxZoom: 12.5, duration: 500 })
+    }
+  })
+}
+
+function locateMe() {
+  if (!navigator.geolocation) return
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      center.value = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+      hasUserLoc.value = true
+      placeUserMarker()
+      // Smooth, single recenter (no bounce)
+      map.easeTo({
+        center: [center.value.lng, center.value.lat],
+        zoom: Math.max(map.getZoom(), 12),
+        duration: 500,
+      })
+    },
+    () => {},
+    { enableHighAccuracy: true, timeout: 12000 }
+  )
+}
+
+/* --- LIFECYCLE --- */
 
 onMounted(() => {
   store.start()
-  if(navigator.geolocation){
+  // Prime nearest calc before map load
+  if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         center.value = { lat: pos.coords.latitude, lng: pos.coords.longitude }
         hasUserLoc.value = true
-        if(map){ map.setCenter([center.value.lng, center.value.lat]); map.setZoom(11); drawMarkers() }
       },
-      () => { /* keep fallback center */ },
+      () => {},
       { enableHighAccuracy: true, timeout: 12000 }
     )
   }
   initMap()
 })
 
-watch(() => nearest.value, () => drawMarkers())
+watch(
+  () => nearest.value,
+  () => {
+    drawParkMarkers()
+    nextTick(fitToContent(10))
+  }
+)
+watch(
+  () => hasUserLoc.value,
+  () => {
+    placeUserMarker()
+    nextTick(fitToContent(10))
+  }
+)
+window.addEventListener('resize', () => setTimeout(fitToContent(10), 150))
 </script>
+
+<style scoped>
+.map-wrap {
+  position: relative;
+  height: 440px;
+  border: 1px solid var(--outline);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.map-placeholder {
+  height: 100%;
+  background: radial-gradient(
+      600px 260px at 0% 0%,
+      var(--accent-soft),
+      transparent 60%
+    ),
+    repeating-linear-gradient(
+      0deg,
+      #162541,
+      #162541 2px,
+      #141f31 2px,
+      #141f31 18px
+    );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-2);
+}
+
+/* Overlay UI */
+.map-ui {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.map-actions {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  display: flex;
+  gap: 8px;
+  z-index: 21;
+  pointer-events: auto;
+}
+
+.map-btn {
+  appearance: none;
+  border: 1px solid #2b3b5a;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: #0e1a2b;
+  color: var(--text);
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.map-btn.primary {
+  background: linear-gradient(180deg, var(--accent-2), var(--accent));
+  color: #0b0b10;
+  border-color: #ff8fc7;
+}
+
+.map-btn:hover {
+  transform: translateY(-1px);
+}
+
+.map-legend {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  background: #0e1a2b;
+  border: 1px solid var(--outline);
+  padding: 6px 10px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  pointer-events: auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  color: var(--text-2);
+  font-size: 12px;
+}
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  border: 2px solid #ffffff22;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.dot.you {
+  background: var(--accent);
+  border-color: #ff9bcc55;
+}
+.dot.park {
+  background: #7fb6ff;
+  border-color: #00142888;
+}
+
+/* Pulse animation for user marker */
+@keyframes pulse {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.85;
+  }
+  70% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+</style>
