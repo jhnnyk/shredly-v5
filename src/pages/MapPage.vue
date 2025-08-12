@@ -7,26 +7,12 @@
 
         <!-- overlay UI -->
         <div class="map-ui">
-          <!-- <div class="map-legend">
-            <span class="dot you"></span> You
-            <span class="dot park"></span> Skatepark
-          </div> -->
           <div class="map-actions">
             <button class="map-btn" @click="locateMe">Locate me</button>
-            <!-- <button class="map-btn primary" @click="fitToContent">Fit</button> -->
           </div>
         </div>
       </div>
     </div>
-
-    <ParkSheet
-      v-if="showSheet"
-      :park="selectedPark"
-      :visited="visited.has(selectedId)"
-      :photos="selectedPark?.photos || []"
-      @toggleVisited="toggleVisited(selectedId)"
-      @close="closeSheet"
-    />
 
     <div class="section-title">Nearest skateparks</div>
     <div
@@ -40,6 +26,7 @@
       <ParkCard
         v-for="p in nearest"
         :key="p.id"
+        :id="p.id"
         :name="p.name"
         :status="p.status || 'open'"
         :cityState="(p.city || '') + (p.state ? ', ' + p.state : '')"
@@ -49,7 +36,6 @@
         :tags="p.tags"
         :visited="visited.has(p.id)"
         @toggleVisited="toggleVisited(p.id)"
-        @details="openPark(p.id)"
       />
     </div>
   </section>
@@ -59,7 +45,6 @@
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import ParkCard from '../components/ParkCard.vue'
 import { useRoute, useRouter } from 'vue-router'
-import ParkSheet from '../components/ParkSheet.vue'
 
 import { useParksStore } from '../store/parksStore'
 const route = useRoute()
@@ -72,13 +57,11 @@ const mapReady = ref(false)
 const center = ref({ lat: 39.5, lng: -98.35 }) // US fallback
 const hasUserLoc = ref(false)
 const selectedId = ref(null)
-const selectedPark = computed(() =>
-  selectedId.value ? store.byId(selectedId.value) : null
-)
-const showSheet = computed(() => !!selectedPark.value)
+
 let map, maplibre
 let userMarker = null
 let parkMarkers = []
+let openPopup = null
 
 // OSM raster with labels (tokenless)
 const OSM_RASTER_STYLE = {
@@ -126,25 +109,6 @@ function toggleVisited(id) {
   store.toggleVisited(id)
 }
 
-async function openPark(id) {
-  selectedId.value = id
-  const p = store.byId(id) || (await store.loadOne(id))
-  if (p && map) {
-    map.easeTo({
-      center: [p.lng, p.lat],
-      zoom: Math.max(map.getZoom(), 13),
-      duration: 500,
-    })
-  }
-}
-
-function closeSheet() {
-  selectedId.value = null
-  if (route.name === 'park') {
-    router.replace({ name: 'map', query: route.query })
-  }
-}
-
 async function initMap() {
   try {
     maplibre = await import('maplibre-gl')
@@ -171,6 +135,7 @@ async function initMap() {
       mapReady.value = true
       placeUserMarker()
       drawParkMarkers()
+      bindMapHitTest()
       nextTick(() => fitToContent(10))
     })
   } catch (e) {
@@ -242,6 +207,49 @@ function makeParkPin() {
   return el
 }
 
+function openPopupForPark(p) {
+  if (!map || !maplibre || !p) return
+  if (openPopup) {
+    openPopup.remove()
+    openPopup = null
+  }
+
+  const html = `
+    <div class="pp">
+      <div class="pp-name">${p.name}</div>
+      <div class="pp-sub">${p.city || ''}${p.state ? `, ${p.state}` : ''}</div>
+      <div class="pp-actions">
+        <button class="pp-btn pp-view">View details</button>
+        <button class="pp-btn pp-visit">${
+          visited.value.has(p.id) ? 'Visited ✓' : 'Mark visited'
+        }</button>
+      </div>
+    </div>`
+
+  const pop = new maplibre.Popup({
+    closeButton: true,
+    offset: 18,
+    className: 'park-popup',
+    focusAfterOpen: false,
+  })
+    .setLngLat([p.lng, p.lat])
+    .setHTML(html)
+    .addTo(map)
+
+  openPopup = pop
+
+  // wire buttons after DOM is attached
+  setTimeout(() => {
+    const root = document.querySelector('.park-popup .pp')
+    if (!root) return
+    const view = root.querySelector('.pp-view')
+    const visit = root.querySelector('.pp-visit')
+    view &&
+      (view.onclick = () => router.push({ name: 'park', params: { id: p.id } }))
+    visit && (visit.onclick = () => toggleVisited(p.id))
+  }, 0)
+}
+
 function drawParkMarkers() {
   if (!map || !maplibre) return
   parkMarkers.forEach((m) => m.remove())
@@ -250,31 +258,50 @@ function drawParkMarkers() {
   for (const p of nearest.value) {
     const el = makeParkPin()
     el.style.cursor = 'pointer'
-    el.addEventListener('click', () => openPark(p.id))
-    el.title = p.name
+
     const mk = new maplibre.Marker({ element: el, anchor: 'bottom' })
       .setLngLat([p.lng, p.lat])
       .addTo(map)
 
-    const html = `
-      <div style="min-width:180px">
-        <div style="font-weight:700;margin-bottom:4px">${p.name}</div>
-        <div style="color:#aab6c9;font-size:12px;margin-bottom:6px">${
-          p.city || ''
-        }${p.state ? `, ${p.state}` : ''}</div>
-        <button data-id="${p.id}" class="popup-btn">Mark visited</button>
-      </div>`
+    // Try direct DOM click (works in most browsers)
+    const elem = mk.getElement()
+    elem.style.pointerEvents = 'auto'
+    ;['pointerup', 'click', 'touchend'].forEach((ev) =>
+      elem.addEventListener(
+        ev,
+        (e) => {
+          e.stopPropagation()
+          openPopupForPark(p)
+        },
+        { passive: true }
+      )
+    )
 
     parkMarkers.push(mk)
   }
+}
 
-  // Delegate clicks in popups
-  map.on('popupopen', () => {
-    document.querySelectorAll('.popup-btn').forEach((btn) => {
-      btn.onclick = (e) =>
-        toggleVisited(e.currentTarget.getAttribute('data-id'))
-    })
-  })
+function bindMapHitTest() {
+  const hit = (e) => {
+    if (!map) return
+    const pt = e.point || map.project(e.lngLat) // MapLibre provides e.point on 'click'
+    const threshold = 22 // px radius
+    let best = null,
+      bestD2 = Infinity
+    for (const p of nearest.value) {
+      const s = map.project([p.lng, p.lat])
+      const dx = s.x - pt.x,
+        dy = s.y - pt.y
+      const d2 = dx * dx + dy * dy
+      if (d2 < bestD2) {
+        bestD2 = d2
+        best = p
+      }
+    }
+    if (best && bestD2 <= threshold * threshold) openPopupForPark(best)
+  }
+  map.on('click', hit)
+  map.on('touchend', hit)
 }
 
 /* --- CAMERA --- */
@@ -493,5 +520,62 @@ window.addEventListener('resize', () => setTimeout(fitToContent(10), 150))
     transform: scale(1.4);
     opacity: 0;
   }
+}
+
+/* Themed popup */
+:deep(.park-popup .maplibregl-popup-content) {
+  background: #0e1726;
+  border: 1px solid var(--outline);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 12px;
+  min-width: 200px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+:deep(.park-popup .maplibregl-popup-tip) {
+  border-top-color: #0e1726 !important;
+  border-bottom-color: #0e1726 !important;
+}
+:deep(.park-popup .pp-name) {
+  font-weight: 800;
+  margin-bottom: 2px;
+}
+:deep(.park-popup .pp-sub) {
+  font-size: 12px;
+  color: var(--text-2);
+  margin-bottom: 10px;
+}
+:deep(.park-popup .pp-actions) {
+  display: flex;
+  gap: 8px;
+}
+:deep(.park-popup .pp-btn) {
+  appearance: none;
+  border: 1px solid #2b3b5a;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: #0e1a2b;
+  color: var(--text);
+  font-weight: 700;
+  cursor: pointer;
+}
+:deep(.park-popup .pp-btn:hover) {
+  transform: translateY(-1px);
+}
+:deep(.park-popup .pp-btn.pp-view) {
+  background: linear-gradient(180deg, var(--accent-2), var(--accent));
+  color: #0b0b10;
+  border-color: #ff8fc7;
+}
+
+/* Make sure markers are on top and clickable in Safari */
+:deep(.maplibregl-marker) {
+  z-index: 40;
+  pointer-events: auto !important;
+}
+
+/* Keep overlay below markers so it can't steal clicks in Safari */
+.map-ui {
+  z-index: 5;
 }
 </style>

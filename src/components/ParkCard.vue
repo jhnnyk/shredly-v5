@@ -26,7 +26,13 @@
         <button class="btn btn-primary" @click="$emit('toggleVisited')">
           {{ visited ? 'Visited ✓' : 'Mark visited' }}
         </button>
-        <button class="btn" @click="$emit('details')">Details</button>
+        <RouterLink
+          v-if="id"
+          class="btn"
+          :to="{ name: 'park', params: { id } }"
+        >
+          Details
+        </RouterLink>
       </div>
     </div>
   </article>
@@ -34,6 +40,7 @@
 
 <script setup>
 defineProps({
+  id: { type: String, required: false },
   name: String,
   cityState: String,
   size: [Number, String],

@@ -30,6 +30,7 @@
       <ParkCard
         v-for="p in parks"
         :key="p.id"
+        :id="p.id"
         :name="p.name"
         :status="p.status || 'open'"
         :cityState="(p.city || '') + (p.state ? ', ' + p.state : '')"
@@ -39,7 +40,6 @@
         :tags="p.tags"
         :visited="visited.has(p.id)"
         @toggleVisited="toggleVisited(p.id)"
-        @details="openDetails(p.id)"
       />
     </div>
   </section>
