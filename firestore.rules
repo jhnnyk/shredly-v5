@@ -1,6 +1,6 @@
 rules_version = '2';
 service cloud.firestore {
-  match /databases/{database}/documents {
+  match /databases/{db}/documents {
 
     function isSignedIn() { return request.auth != null; }
     function isAdmin() { return isSignedIn() && request.auth.token.admin == true; }
@@ -34,17 +34,16 @@ service cloud.firestore {
     }
 
     // Public photo metadata for parks
-    // (Storage object is covered in storage.rules; this is the Firestore doc)
-    match /parkPhotos/{parkId}/{photoId} {
-      allow read: if true;
-      // Anyone signed in can create; must credit themselves with displayName
-      allow create: if isSignedIn()
-        && request.resource.data.uid == request.auth.uid
-        && request.resource.data.displayName is string
-        && request.resource.data.displayName.matches('^.{2,30}$');
-      // Only the owner can update/delete their photo doc
-      allow update, delete: if isSignedIn()
-        && resource.data.uid == request.auth.uid;
+    match /photos/{photoId} {
+      allow read: if true; // anyone can view photos metadata
+      // users can create their own upload record
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.parkId is string
+                    && request.resource.data.status in ['uploading', 'processing']
+                    && request.time == request.resource.data.createdAt;
+      // optional: allow user to update their record with a caption; function bypasses rules anyway
+      allow update, delete: if false;
     }
   }
 }

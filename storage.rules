@@ -1,19 +1,23 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-
-    // Publicly readable park photos. Signed-in users can upload.
-    match /parkPhotos/{parkId}/{imageId} {
-      // Anyone can view photos
+    // Public, immutable processed assets
+    match /public/{path=**} {
       allow read: if true;
-
-      // Only signed-in users may upload; limit size/type; require credit metadata
-      allow write: if request.auth != null
-        && request.resource.size < 10 * 1024 * 1024 // <= 10MB
-        && request.resource.contentType.matches('image/.*')
-        && request.resource.metadata.uid == request.auth.uid
-        && request.resource.metadata.displayName is string
-        && request.resource.metadata.displayName.matches('^.{2,30}$');
+      allow write: if false; // only Functions (admin) writes here
     }
+
+    // Authenticated users can upload originals under their UID
+    match /uploads/{uid}/{photoId}/{rest=**} {
+      allow read: if request.auth != null && request.auth.uid == uid; // optional
+      allow write: if request.auth != null
+                   && request.auth.uid == uid
+                   && request.resource.size < 20 * 1024 * 1024 // 20MB
+                   && request.resource.contentType.matches('image/.*')
+                      || request.resource.contentType in ['application/octet-stream']; // some HEICs
+    }
+
+    // deny everything else
+    match /{allPaths=**} { allow read, write: if false; }
   }
 }

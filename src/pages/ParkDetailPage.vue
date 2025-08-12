@@ -46,9 +46,41 @@
       </div>
 
       <div class="card">
+        <div class="section-title">Add a photo</div>
+        <div class="uploader">
+          <input
+            id="fileInput"
+            type="file"
+            accept="image/*,.heic,.heif"
+            multiple
+            @change="onFiles"
+          />
+          <label for="fileInput" class="btn btn-primary">{{
+            uploading ? 'Uploading…' : 'Choose photos'
+          }}</label>
+          <div class="hint">
+            JPEG/PNG/WEBP/HEIC supported. Up to ~20MB each.
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
         <div class="section-title">Photos</div>
         <div class="photos small" v-if="photos.length">
-          <img v-for="(src, i) in photos" :key="i" :src="src" alt="" />
+          <template v-for="p in photos" :key="p.id">
+            <div class="photo-tile">
+              <div v-if="p.status !== 'ready'" class="ph processing">
+                Processing…
+              </div>
+              <img
+                v-else
+                :src="bestSrc(p)"
+                :srcset="srcSet(p)"
+                sizes="(max-width: 600px) 50vw, 33vw"
+                alt=""
+              />
+            </div>
+          </template>
         </div>
         <div v-else class="muted">No photos yet.</div>
       </div>
@@ -58,6 +90,17 @@
 
 <script setup>
 import { onMounted, ref, computed } from 'vue'
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+  addDoc,
+  serverTimestamp,
+} from 'firebase/firestore'
+import { ref as sRef, uploadBytesResumable } from 'firebase/storage'
+import { db, storage } from '../lib/firebase'
 import { useRoute } from 'vue-router'
 import { useParksStore } from '../store/parksStore'
 import { useAuthStore } from '../store/authStore' // assuming you have this
@@ -68,9 +111,20 @@ const auth = useAuthStore()
 
 const id = route.params.id
 const park = ref(null)
+const photos = ref([])
+const uploading = ref(false)
 
 onMounted(async () => {
   park.value = await store.loadOne(String(id))
+  // live stream of this park's photos (newest first)
+  const q = query(
+    collection(db, 'photos'),
+    where('parkId', '==', String(id)),
+    orderBy('createdAt', 'desc')
+  )
+  onSnapshot(q, (snap) => {
+    photos.value = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+  })
 })
 
 const visited = computed(() => store.visitedSet.has(String(id)))
@@ -80,7 +134,7 @@ function toggleVisited() {
 
 const isAdmin = computed(() => !!auth?.isAdmin)
 
-const photos = computed(() => (park.value?.photos || []).slice(0, 24))
+// const photos = computed(() => (park.value?.photos || []).slice(0, 24))
 
 const statusBadge = computed(() => {
   const s = (park.value?.status || 'open').toLowerCase()
@@ -89,6 +143,71 @@ const statusBadge = computed(() => {
     return { class: 'construction', text: 'Under construction' }
   return null
 })
+
+async function onFiles(e) {
+  const files = Array.from(e.target.files || [])
+  if (!auth?.user) {
+    alert('Please sign in to upload photos')
+    return
+  }
+  if (!files.length) return
+  uploading.value = true
+  try {
+    await Promise.all(files.map((f) => uploadOne(f)))
+  } finally {
+    uploading.value = false
+    e.target.value = '' // reset input
+  }
+}
+
+async function uploadOne(file) {
+  const userId = auth.user.uid
+  const parkId = String(id)
+  // create Firestore record first
+  const docRef = await addDoc(collection(db, 'photos'), {
+    userId,
+    parkId,
+    status: 'uploading',
+    createdAt: serverTimestamp(),
+  })
+  // upload original with metadata (Function reads these)
+  const path = `uploads/${userId}/${docRef.id}/original`
+  const meta = {
+    contentType: file.type || 'application/octet-stream',
+    customMetadata: { parkId, userId, photoId: docRef.id },
+  }
+  const task = uploadBytesResumable(sRef(storage, path), file, meta)
+  // optional: listen to progress (you can surface a per-file progress bar)
+  task.on('state_changed', null, console.error, async () => {
+    // mark processing so UI shows "Processing…" placeholder
+    // (function will move it to 'ready')
+    // Not strictly required if you already set 'uploading'
+  })
+}
+
+function bestSrc(p) {
+  // prefer md.webp, then md.jpg, then sm.webp/jpg
+  return (
+    p.outputs?.md?.webp ||
+    p.outputs?.md?.jpg ||
+    p.outputs?.sm?.webp ||
+    p.outputs?.sm?.jpg ||
+    ''
+  )
+}
+function srcSet(p) {
+  const o = p.outputs || {}
+  const parts = []
+  if (o.sm?.webp) parts.push(`${o.sm.webp} 512w`)
+  if (o.md?.webp) parts.push(`${o.md.webp} 1024w`)
+  if (o.lg?.webp) parts.push(`${o.lg.webp} 1600w`)
+  if (!parts.length) {
+    if (o.sm?.jpg) parts.push(`${o.sm.jpg} 512w`)
+    if (o.md?.jpg) parts.push(`${o.md.jpg} 1024w`)
+    if (o.lg?.jpg) parts.push(`${o.lg.jpg} 1600w`)
+  }
+  return parts.join(', ')
+}
 </script>
 
 <style scoped>
@@ -179,5 +298,72 @@ const statusBadge = computed(() => {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+}
+
+.uploader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.uploader input[type='file'] {
+  display: none;
+}
+.uploader .hint {
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.photos {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+@media (max-width: 700px) {
+  .photos {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.photo-tile {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1/1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #0e1726;
+  border: 1px solid var(--outline);
+}
+.photo-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.ph.processing {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #ffd5e9;
+  background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.04),
+      rgba(255, 255, 255, 0.02) 20%,
+      rgba(255, 255, 255, 0.04) 40%
+    )
+    no-repeat;
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite;
+}
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 </style>
