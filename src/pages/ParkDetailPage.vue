@@ -24,10 +24,6 @@
       </div>
     </div>
 
-    <div class="photos" v-if="photos.length">
-      <img v-for="(src, i) in photos" :key="i" :src="src" alt="" />
-    </div>
-
     <div class="grid2">
       <div class="card">
         <div class="section-title">Details</div>
@@ -66,19 +62,39 @@
 
       <div class="card">
         <div class="section-title">Photos</div>
-        <div class="photos small" v-if="photos.length">
+        <div class="photos" v-if="photos.length">
           <template v-for="p in photos" :key="p.id">
             <div class="photo-tile">
-              <div v-if="p.status !== 'ready'" class="ph processing">
-                Processing…
-              </div>
+              <!-- Local preview only for browser-supported formats -->
+              <img v-if="localPreview[p.id]" :src="localPreview[p.id]" alt="" />
+
               <img
-                v-else
+                v-else-if="p.status === 'ready'"
                 :src="bestSrc(p)"
                 :srcset="srcSet(p)"
                 sizes="(max-width: 600px) 50vw, 33vw"
+                loading="lazy"
+                decoding="async"
                 alt=""
               />
+
+              <div v-if="p.status !== 'ready'" class="ph processing">
+                <div class="label">
+                  {{
+                    localPreview[p.id]
+                      ? `Uploading ${uploadProgress[p.id] ?? 0}%`
+                      : p.status === 'failed'
+                      ? 'Failed to process'
+                      : 'Processing…'
+                  }}
+                </div>
+                <div v-if="uploadProgress[p.id] != null" class="progress">
+                  <div
+                    class="bar"
+                    :style="{ width: (uploadProgress[p.id] || 0) + '%' }"
+                  ></div>
+                </div>
+              </div>
             </div>
           </template>
         </div>
@@ -89,7 +105,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, computed, watch } from 'vue'
 import {
   collection,
   query,
@@ -160,6 +176,18 @@ async function onFiles(e) {
   }
 }
 
+// local preview + progress while the file is uploading
+const localPreview = ref({}) // { [photoId]: objectURL }
+const uploadProgress = ref({}) // { [photoId]: percent }
+
+function canPreviewInBrowser(file) {
+  const type = (file.type || '').toLowerCase()
+  const name = (file.name || '').toLowerCase()
+  if (type.includes('heic') || type.includes('heif')) return false
+  if (!type && (name.endsWith('.heic') || name.endsWith('.heif'))) return false
+  return type ? type.startsWith('image/') : true
+}
+
 async function uploadOne(file) {
   const userId = auth.user.uid
   const parkId = String(id)
@@ -170,6 +198,13 @@ async function uploadOne(file) {
     status: 'uploading',
     createdAt: serverTimestamp(),
   })
+
+  // local preview for formats the browser can display (NOT HEIC)
+  if (canPreviewInBrowser(file)) {
+    const url = URL.createObjectURL(file)
+    localPreview.value = { ...localPreview.value, [docRef.id]: url } // reassign for reactivity
+  }
+
   // upload original with metadata (Function reads these)
   const path = `uploads/${userId}/${docRef.id}/original`
   const meta = {
@@ -178,11 +213,19 @@ async function uploadOne(file) {
   }
   const task = uploadBytesResumable(sRef(storage, path), file, meta)
   // optional: listen to progress (you can surface a per-file progress bar)
-  task.on('state_changed', null, console.error, async () => {
-    // mark processing so UI shows "Processing…" placeholder
-    // (function will move it to 'ready')
-    // Not strictly required if you already set 'uploading'
-  })
+  task.on(
+    'state_changed',
+    (snap) => {
+      const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100)
+      uploadProgress.value = { ...uploadProgress.value, [docRef.id]: pct } // reassign
+    },
+    (err) => {
+      console.error(err)
+    },
+    () => {
+      /* upload complete → Cloud Function takes over (processing) */
+    }
+  )
 }
 
 function bestSrc(p) {
@@ -208,6 +251,23 @@ function srcSet(p) {
   }
   return parts.join(', ')
 }
+
+// when Firestore flips a photo to "ready", drop the temp preview & progress
+watch(photos, (list) => {
+  for (const p of list) {
+    if (p.status === 'ready' && localPreview.value[p.id]) {
+      const lp = { ...localPreview.value }
+      try {
+        URL.revokeObjectURL(lp[p.id])
+      } catch {}
+      delete lp[p.id]
+      localPreview.value = lp
+      const up = { ...uploadProgress.value }
+      delete up[p.id]
+      uploadProgress.value = up
+    }
+  }
+})
 </script>
 
 <style scoped>
@@ -357,7 +417,30 @@ function srcSet(p) {
     no-repeat;
   background-size: 200% 100%;
   animation: shimmer 1.2s infinite;
+  position: relative;
+  flex-direction: column;
+  gap: 8px;
 }
+
+.ph.processing .label {
+  z-index: 1;
+}
+.ph.processing .progress {
+  width: 90%;
+  height: 6px;
+  border: 1px solid #2b3b5a;
+  background: #162541;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.ph.processing .progress .bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(180deg, var(--accent-2), var(--accent));
+  transition: width 0.15s ease;
+}
+
 @keyframes shimmer {
   0% {
     background-position: 200% 0;
