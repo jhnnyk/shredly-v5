@@ -62,6 +62,7 @@ let map, maplibre
 let userMarker = null
 let parkMarkers = []
 let openPopup = null
+let currentPopupParkId = null
 
 // OSM raster with labels (tokenless)
 const OSM_RASTER_STYLE = {
@@ -208,6 +209,7 @@ function makeParkPin() {
 }
 
 function openPopupForPark(p) {
+  currentPopupParkId = p.id
   if (!map || !maplibre || !p) return
   if (openPopup) {
     openPopup.remove()
@@ -402,6 +404,16 @@ watch(
     nextTick(fitToContent(10))
   }
 )
+
+watch(visited, () => {
+  if (!openPopup || !currentPopupParkId) return
+  const btn = document.querySelector('.park-popup .pp-visit')
+  if (btn)
+    btn.textContent = visited.value.has(currentPopupParkId)
+      ? 'Visited ✓'
+      : 'Mark visited'
+})
+
 window.addEventListener('resize', () => setTimeout(fitToContent(10), 150))
 </script>
 
