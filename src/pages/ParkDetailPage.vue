@@ -63,40 +63,47 @@
       <div class="card">
         <div class="section-title">Photos</div>
         <div class="photos" v-if="photos.length">
-          <template v-for="p in photos" :key="p.id">
-            <div class="photo-tile">
-              <!-- Local preview only for browser-supported formats -->
-              <img v-if="localPreview[p.id]" :src="localPreview[p.id]" alt="" />
+          <div class="photo-tile" v-for="p in photos" :key="p.id">
+            <!-- Local preview only for browser-supported formats -->
+            <img v-if="localPreview[p.id]" :src="localPreview[p.id]" alt="" />
 
-              <img
-                v-else-if="p.status === 'ready'"
-                :src="bestSrc(p)"
-                :srcset="srcSet(p)"
-                sizes="(max-width: 600px) 50vw, 33vw"
-                loading="lazy"
-                decoding="async"
-                alt=""
-              />
+            <img
+              v-else-if="p.status === 'ready'"
+              :src="bestSrc(p)"
+              :srcset="srcSet(p)"
+              sizes="(max-width: 600px) 50vw, 33vw"
+              loading="lazy"
+              decoding="async"
+              alt=""
+            />
 
-              <div v-if="p.status !== 'ready'" class="ph processing">
-                <div class="label">
-                  {{
-                    localPreview[p.id]
-                      ? `Uploading ${uploadProgress[p.id] ?? 0}%`
-                      : p.status === 'failed'
-                      ? 'Failed to process'
-                      : 'Processing…'
-                  }}
-                </div>
-                <div v-if="uploadProgress[p.id] != null" class="progress">
-                  <div
-                    class="bar"
-                    :style="{ width: (uploadProgress[p.id] || 0) + '%' }"
-                  ></div>
-                </div>
+            <!-- photo credit -->
+            <RouterLink
+              v-if="p.userId"
+              class="credit"
+              :to="{ name: 'profile', params: { uid: p.userId } }"
+            >
+              {{ p.userDisplayName || 'User' }}
+            </RouterLink>
+
+            <div v-if="p.status !== 'ready'" class="ph processing">
+              <div class="label">
+                {{
+                  localPreview[p.id]
+                    ? `Uploading ${uploadProgress[p.id] ?? 0}%`
+                    : p.status === 'failed'
+                    ? 'Failed to process'
+                    : 'Processing…'
+                }}
+              </div>
+              <div v-if="uploadProgress[p.id] != null" class="progress">
+                <div
+                  class="bar"
+                  :style="{ width: (uploadProgress[p.id] || 0) + '%' }"
+                ></div>
               </div>
             </div>
-          </template>
+          </div>
         </div>
         <div v-else class="muted">No photos yet.</div>
       </div>
@@ -190,11 +197,17 @@ function canPreviewInBrowser(file) {
 
 async function uploadOne(file) {
   const userId = auth.user.uid
+  const userDisplayName =
+    auth.user.displayName ||
+    auth.profile?.displayName || // if you keep one in Firestore
+    (auth.user.email ? auth.user.email.split('@')[0] : 'User')
+
   const parkId = String(id)
   // create Firestore record first
   const docRef = await addDoc(collection(db, 'photos'), {
     userId,
     parkId,
+    userDisplayName,
     status: 'uploading',
     createdAt: serverTimestamp(),
   })
@@ -398,6 +411,26 @@ watch(photos, (list) => {
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+/* pink credit overlay */
+.photo-tile .credit {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  color: var(--accent); /* bright pink */
+  font-weight: 800;
+  font-size: 12px;
+  text-decoration: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  background: rgba(10, 20, 35, 0.28); /* subtle for legibility */
+  backdrop-filter: blur(2px);
+  border: 1px solid #2b3b5a;
+}
+.photo-tile .credit:hover {
+  transform: translateY(-1px);
 }
 
 .ph.processing {

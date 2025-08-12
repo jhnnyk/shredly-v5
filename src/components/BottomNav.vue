@@ -1,14 +1,14 @@
 <template>
   <nav class="bottom-nav" role="navigation" aria-label="Primary">
-    <RouterLink :to="{ name:'home' }">
+    <RouterLink :to="{ name: 'home' }">
       <span class="icon" v-html="icons.home"></span>
       <span>Home</span>
     </RouterLink>
-    <RouterLink :to="{ name:'map' }">
+    <RouterLink :to="{ name: 'map' }">
       <span class="icon" v-html="icons.map"></span>
       <span>Map</span>
     </RouterLink>
-    <RouterLink :to="{ name:'me' }">
+    <RouterLink :to="{ name: 'profile' }">
       <span class="icon" v-html="icons.user"></span>
       <span>Profile</span>
     </RouterLink>

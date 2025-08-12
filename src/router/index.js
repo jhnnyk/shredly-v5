@@ -13,7 +13,14 @@ const router = createRouter({
     { path: '/', name: 'home', component: HomeView },
     { path: '/map', name: 'map', component: MapPage },
     { path: '/park/:id', name: 'park', component: ParkDetailPage, props: true },
-    { path: '/me', name: 'me', component: ProfilePage },
+    // /profile  → current user
+    // /profile/:uid → public view of another user
+    {
+      path: '/profile/:uid?',
+      name: 'profile',
+      component: ProfilePage,
+      props: true,
+    },
     {
       path: '/admin/parks',
       name: 'adminParks',
