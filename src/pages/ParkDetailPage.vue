@@ -92,11 +92,13 @@ import { db, storage } from '../lib/firebase'
 import { useRoute } from 'vue-router'
 import { useParksStore } from '../store/parksStore'
 import { useAuthStore } from '../store/authStore'
+import { useVisitedStore } from '../store/visitedStore'
 import PhotoGrid from '../components/PhotoGrid.vue'
 
 const route = useRoute()
 const store = useParksStore()
 const auth = useAuthStore()
+const vstore = useVisitedStore()
 
 const id = route.params.id
 const park = ref(null)
@@ -116,9 +118,9 @@ onMounted(async () => {
   })
 })
 
-const visited = computed(() => store.visitedSet.has(String(id)))
+const visited = computed(() => vstore.isVisited(String(id)))
 function toggleVisited() {
-  store.toggleVisited(String(id))
+  vstore.toggle(String(id))
 }
 
 const isAdmin = computed(() => !!auth?.isAdmin)

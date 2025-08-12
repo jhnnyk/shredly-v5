@@ -34,7 +34,7 @@
         :builder="p.builder"
         :hours="p.hours"
         :tags="p.tags"
-        :visited="visited.has(p.id)"
+        :visited="vstore.isVisited(p.id)"
         @toggleVisited="toggleVisited(p.id)"
         :cover="p.cover"
       />
@@ -48,10 +48,16 @@ import ParkCard from '../components/ParkCard.vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useParksStore } from '../store/parksStore'
+import { useVisitedStore } from '../store/visitedStore'
+
 const route = useRoute()
 const router = useRouter()
 
 const store = useParksStore()
+const vstore = useVisitedStore()
+
+const visited = computed(() => vstore.set) // a Set
+
 const mapEl = ref(null)
 const listEl = ref(null)
 const mapReady = ref(false)
@@ -94,7 +100,6 @@ function haversine(a, b) {
   return 2 * R * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s))
 }
 
-const visited = computed(() => store.visitedSet)
 const nearest = computed(() => {
   const parks = store.parks || []
   return parks
@@ -179,7 +184,7 @@ function placeUserMarker() {
 }
 
 // Blue pin with skateboard
-function makeParkPin() {
+function makeParkPin(isVisited = false) {
   const el = document.createElement('div')
   el.style.width = '32px' // was 30
   el.style.height = '40px' // was 38
@@ -205,6 +210,17 @@ function makeParkPin() {
             stroke="#fff" stroke-width="1.6" vector-effect="non-scaling-stroke"
             stroke-linecap="round" stroke-linejoin="round"/>
     </g>
+
+    ${
+      isVisited
+        ? `
+      <!-- green check badge -->
+      <g transform="translate(16,6)">
+        <circle cx="0" cy="0" r="4.6" fill="#24d87a" />
+        <path d="M -2 0 l 1.2 1.6 L 2.2 -1.2" fill="none" stroke="#0b321f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>`
+        : ''
+    }
   </svg>`
   return el
 }
@@ -259,7 +275,7 @@ function drawParkMarkers() {
   parkMarkers = []
 
   for (const p of nearest.value) {
-    const el = makeParkPin()
+    const el = makeParkPin(visited.value.has(p.id))
     el.style.cursor = 'pointer'
 
     const mk = new maplibre.Marker({ element: el, anchor: 'bottom' })
@@ -414,6 +430,14 @@ watch(visited, () => {
       ? 'Visited ✓'
       : 'Mark visited'
 })
+
+watch(
+  () => vstore.set,
+  () => {
+    drawParkMarkers()
+  },
+  { deep: false }
+)
 
 window.addEventListener('resize', () => setTimeout(fitToContent(10), 150))
 </script>

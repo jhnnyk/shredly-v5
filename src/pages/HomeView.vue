@@ -38,7 +38,7 @@
         :builder="p.builder"
         :hours="p.hours"
         :tags="p.tags"
-        :visited="visited.has(p.id)"
+        :visited="vstore.isVisited(p.id)"
         @toggleVisited="toggleVisited(p.id)"
         :cover="p.cover"
       />
@@ -50,8 +50,10 @@
 import { ref, computed, onMounted } from 'vue'
 import ParkCard from '../components/ParkCard.vue'
 import { useParksStore } from '../store/parksStore'
+import { useVisitedStore } from '../store/visitedStore'
 
 const store = useParksStore()
+const vstore = useVisitedStore()
 const q = ref(store.query)
 
 onMounted(() => {
@@ -59,7 +61,6 @@ onMounted(() => {
 })
 
 const parks = computed(() => store.filteredParks)
-const visited = computed(() => store.visitedSet)
 
 function onSearch() {
   store.setQuery(q.value)

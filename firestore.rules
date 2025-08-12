@@ -45,5 +45,16 @@ service cloud.firestore {
       // optional: allow user to update their record with a caption; function bypasses rules anyway
       allow update, delete: if false;
     }
+
+    // Each user can create/delete their own visited park docs
+    match /users/{uid}/visited/{parkId} {
+      allow read: if request.auth != null && request.auth.uid == uid; // owner can read (private)
+      allow create: if request.auth != null
+                    && request.auth.uid == uid
+                    && request.resource.data.parkId == parkId
+                    && request.resource.data.createdAt == request.time;
+      allow delete: if request.auth != null && request.auth.uid == uid;
+      allow update: if false;
+    }
   }
 }

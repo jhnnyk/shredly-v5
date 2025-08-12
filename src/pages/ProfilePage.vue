@@ -20,7 +20,9 @@
             <div class="card p-16">
               <div class="text-muted">Visited parks</div>
               <div style="font-size: 28px; font-weight: 700">
-                {{ visitedCount }}
+                <span v-if="userData?.visitedCount != null">
+                  • {{ userData.visitedCount }} visited</span
+                >
               </div>
             </div>
             <div class="card p-16">

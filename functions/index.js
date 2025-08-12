@@ -1,6 +1,7 @@
 // functions/index.js
 const { onObjectFinalized } = require('firebase-functions/v2/storage')
 const { setGlobalOptions } = require('firebase-functions/v2')
+const { onDocumentWritten } = require('firebase-functions/v2/firestore')
 const logger = require('firebase-functions/logger')
 const admin = require('firebase-admin')
 const sharp = require('sharp')
@@ -187,3 +188,26 @@ exports.processPhoto = onObjectFinalized(async (event) => {
     )
   }
 })
+
+// Increment/decrement users/{uid}.visitedCount when visited docs change
+exports.visitedCounter = onDocumentWritten(
+  'users/{uid}/visited/{parkId}',
+  async (event) => {
+    const before = event.data.before.exists
+    const after = event.data.after.exists
+    if (before === after) return // no net change
+
+    const { uid } = event.params
+    const delta = !before && after ? 1 : -1
+    await admin
+      .firestore()
+      .doc(`users/${uid}`)
+      .set(
+        {
+          visitedCount: admin.firestore.FieldValue.increment(delta),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      )
+  }
+)
