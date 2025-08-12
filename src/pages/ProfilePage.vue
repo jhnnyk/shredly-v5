@@ -49,13 +49,13 @@
               Log out
             </button>
             <router-link
-              v-if="auth.isAdmin"
+              v-if="auth.isAdmin && isSelf"
               class="btn btn-primary"
               :to="{ name: 'adminParkEditor', params: { id: 'new' } }"
               >Add a park (admin)</router-link
             >
             <router-link
-              v-if="auth.isAdmin"
+              v-if="auth.isAdmin && isSelf"
               class="btn btn-ghost"
               :to="{ name: 'adminParks' }"
               >Manage parks</router-link
