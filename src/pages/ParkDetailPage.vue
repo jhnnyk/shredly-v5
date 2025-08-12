@@ -207,30 +207,6 @@ async function uploadOne(file) {
   )
 }
 
-function bestSrc(p) {
-  // prefer md.webp, then md.jpg, then sm.webp/jpg
-  return (
-    p.outputs?.md?.webp ||
-    p.outputs?.md?.jpg ||
-    p.outputs?.sm?.webp ||
-    p.outputs?.sm?.jpg ||
-    ''
-  )
-}
-function srcSet(p) {
-  const o = p.outputs || {}
-  const parts = []
-  if (o.sm?.webp) parts.push(`${o.sm.webp} 512w`)
-  if (o.md?.webp) parts.push(`${o.md.webp} 1024w`)
-  if (o.lg?.webp) parts.push(`${o.lg.webp} 1600w`)
-  if (!parts.length) {
-    if (o.sm?.jpg) parts.push(`${o.sm.jpg} 512w`)
-    if (o.md?.jpg) parts.push(`${o.md.jpg} 1024w`)
-    if (o.lg?.jpg) parts.push(`${o.lg.jpg} 1600w`)
-  }
-  return parts.join(', ')
-}
-
 // when Firestore flips a photo to "ready", drop the temp preview & progress
 watch(photos, (list) => {
   for (const p of list) {
