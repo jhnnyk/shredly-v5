@@ -62,49 +62,14 @@
 
       <div class="card">
         <div class="section-title">Photos</div>
-        <div class="photos" v-if="photos.length">
-          <div class="photo-tile" v-for="p in photos" :key="p.id">
-            <!-- Local preview only for browser-supported formats -->
-            <img v-if="localPreview[p.id]" :src="localPreview[p.id]" alt="" />
-
-            <img
-              v-else-if="p.status === 'ready'"
-              :src="bestSrc(p)"
-              :srcset="srcSet(p)"
-              sizes="(max-width: 600px) 50vw, 33vw"
-              loading="lazy"
-              decoding="async"
-              alt=""
-            />
-
-            <!-- photo credit -->
-            <RouterLink
-              v-if="p.userId"
-              class="credit"
-              :to="{ name: 'profile', params: { uid: p.userId } }"
-            >
-              {{ p.userDisplayName || 'User' }}
-            </RouterLink>
-
-            <div v-if="p.status !== 'ready'" class="ph processing">
-              <div class="label">
-                {{
-                  localPreview[p.id]
-                    ? `Uploading ${uploadProgress[p.id] ?? 0}%`
-                    : p.status === 'failed'
-                    ? 'Failed to process'
-                    : 'Processing…'
-                }}
-              </div>
-              <div v-if="uploadProgress[p.id] != null" class="progress">
-                <div
-                  class="bar"
-                  :style="{ width: (uploadProgress[p.id] || 0) + '%' }"
-                ></div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <PhotoGrid
+          v-if="photos.length"
+          :photos="photos"
+          :localPreview="localPreview"
+          :uploadProgress="uploadProgress"
+          :showCredit="true"
+          credit-type="user"
+        />
         <div v-else class="muted">No photos yet.</div>
       </div>
     </div>
@@ -126,7 +91,8 @@ import { ref as sRef, uploadBytesResumable } from 'firebase/storage'
 import { db, storage } from '../lib/firebase'
 import { useRoute } from 'vue-router'
 import { useParksStore } from '../store/parksStore'
-import { useAuthStore } from '../store/authStore' // assuming you have this
+import { useAuthStore } from '../store/authStore'
+import PhotoGrid from '../components/PhotoGrid.vue'
 
 const route = useRoute()
 const store = useParksStore()
@@ -334,19 +300,6 @@ watch(photos, (list) => {
   border: 2px solid #5a5520;
 }
 
-.photos {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-}
-.photos.small img,
-.photos img {
-  width: 100%;
-  aspect-ratio: 1/1;
-  object-fit: cover;
-  border-radius: 8px;
-}
-
 .grid2 {
   display: grid;
   gap: 16px;
@@ -386,100 +339,9 @@ watch(photos, (list) => {
   font-size: 12px;
 }
 
-.photos {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-}
 @media (max-width: 700px) {
   .photos {
     grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-.photo-tile {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 1/1;
-  border-radius: 8px;
-  overflow: hidden;
-  background: #0e1726;
-  border: 1px solid var(--outline);
-}
-.photo-tile img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-/* pink credit overlay */
-.photo-tile .credit {
-  position: absolute;
-  right: 6px;
-  bottom: 6px;
-  padding: 4px 8px;
-  border-radius: 8px;
-  color: var(--accent); /* bright pink */
-  font-weight: 800;
-  font-size: 12px;
-  text-decoration: none;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
-  background: rgba(10, 20, 35, 0.28); /* subtle for legibility */
-  backdrop-filter: blur(2px);
-  border: 1px solid #2b3b5a;
-}
-.photo-tile .credit:hover {
-  transform: translateY(-1px);
-}
-
-.ph.processing {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  color: #ffd5e9;
-  background: linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.04),
-      rgba(255, 255, 255, 0.02) 20%,
-      rgba(255, 255, 255, 0.04) 40%
-    )
-    no-repeat;
-  background-size: 200% 100%;
-  animation: shimmer 1.2s infinite;
-  position: relative;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.ph.processing .label {
-  z-index: 1;
-}
-.ph.processing .progress {
-  width: 90%;
-  height: 6px;
-  border: 1px solid #2b3b5a;
-  background: #162541;
-  border-radius: 999px;
-  overflow: hidden;
-  margin-bottom: 8px;
-}
-.ph.processing .progress .bar {
-  height: 100%;
-  width: 0%;
-  background: linear-gradient(180deg, var(--accent-2), var(--accent));
-  transition: width 0.15s ease;
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
   }
 }
 </style>

@@ -33,31 +33,12 @@
 
           <div class="card">
             <div class="section-title">Photos</div>
-            <div v-if="photos.length" class="photos">
-              <div v-for="p in photos" :key="p.id" class="photo-tile">
-                <img
-                  v-if="p.status === 'ready'"
-                  :src="
-                    p.outputs?.md?.webp ||
-                    p.outputs?.md?.jpg ||
-                    p.outputs?.sm?.webp ||
-                    p.outputs?.sm?.jpg
-                  "
-                  loading="lazy"
-                  decoding="async"
-                  alt=""
-                />
-                <div v-else class="ph processing">Processing…</div>
-
-                <!-- credit links to the park -->
-                <RouterLink
-                  class="credit"
-                  :to="{ name: 'park', params: { id: p.parkId } }"
-                >
-                  View park
-                </RouterLink>
-              </div>
-            </div>
+            <PhotoGrid
+              v-if="photos.length"
+              :photos="photos"
+              :showCredit="true"
+              credit-type="park"
+            />
             <div v-else class="muted">No photos yet.</div>
           </div>
 
@@ -112,7 +93,7 @@ import {
 import { db } from '../lib/firebase'
 import { useAuthStore } from '../store/authStore'
 import { useParksStore } from '../store/parksStore'
-
+import PhotoGrid from '../components/PhotoGrid.vue'
 import AuthModal from '../components/AuthModal.vue'
 
 const route = useRoute()
@@ -122,15 +103,6 @@ const showAuth = ref(false)
 
 const visitedCount = computed(() => parks.visited.length)
 const photoCount = computed(() => auth.profile?.photoCount || 0)
-const initials = computed(() => {
-  const n = auth.displayName || 'S'
-  return n
-    .split(' ')
-    .map((s) => s[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase()
-})
 
 // whose profile are we showing?
 const viewingUid = computed(() =>
