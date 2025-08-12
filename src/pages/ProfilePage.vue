@@ -21,8 +21,8 @@
               <div class="text-muted">Visited parks</div>
               <div style="font-size: 28px; font-weight: 700">
                 <span v-if="userData?.visitedCount != null">
-                  • {{ userData.visitedCount }} visited</span
-                >
+                  {{ userData.visitedCount }}
+                </span>
               </div>
             </div>
             <div class="card p-16">
@@ -33,7 +33,7 @@
             </div>
           </div>
 
-          <div class="card">
+          <div class="card p-16 mt-16">
             <div class="section-title">Photos</div>
             <PhotoGrid
               v-if="photos.length"

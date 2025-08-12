@@ -1,3 +1,4 @@
+// src/store/visitedStore.js
 import { defineStore } from 'pinia'
 import { db } from '../lib/firebase'
 import {
@@ -12,9 +13,7 @@ import { useAuthStore } from './authStore'
 
 export const useVisitedStore = defineStore('visited', {
   state: () => ({ set: new Set(), _unsub: null }),
-  getters: {
-    isVisited: (s) => (id) => s.set.has(String(id)),
-  },
+  getters: { isVisited: (s) => (id) => s.set.has(String(id)) },
   actions: {
     start() {
       const auth = useAuthStore()
@@ -28,10 +27,8 @@ export const useVisitedStore = defineStore('visited', {
       })
     },
     stop() {
-      if (this._unsub) {
-        this._unsub()
-        this._unsub = null
-      }
+      this._unsub?.()
+      this._unsub = null
       this.set = new Set()
     },
     async toggle(parkId) {
@@ -41,12 +38,19 @@ export const useVisitedStore = defineStore('visited', {
       const ref = doc(db, 'users', auth.user.uid, 'visited', id)
 
       if (this.set.has(id)) {
-        // optimistic update
-        this.set = new Set([...this.set].filter((x) => x !== id))
-        await deleteDoc(ref).catch(() => {})
+        this.set = new Set([...this.set].filter((x) => x !== id)) // optimistic
+        await deleteDoc(ref).catch((err) => {
+          console.error('delete visited failed', err)
+          this.start() // resync if it failed
+        })
       } else {
         this.set = new Set(this.set).add(id)
-        await setDoc(ref, { parkId: id, createdAt: serverTimestamp() })
+        await setDoc(ref, { parkId: id, createdAt: serverTimestamp() }).catch(
+          (err) => {
+            console.error('create visited failed', err)
+            this.start()
+          }
+        )
       }
     },
   },

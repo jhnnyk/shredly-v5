@@ -27,7 +27,7 @@
         <span v-for="t in tags" :key="t" class="tag">{{ t }}</span>
       </div>
       <div class="actions">
-        <button class="btn btn-primary" @click="$emit('toggleVisited')">
+        <button class="btn btn-primary" @click="emit('toggleVisited')">
           {{ visited ? 'Visited ✓' : 'Mark visited' }}
         </button>
         <RouterLink
@@ -43,6 +43,8 @@
 </template>
 
 <script setup>
+const emit = defineEmits(['toggleVisited'])
+
 defineProps({
   id: { type: String, required: false },
   name: String,
