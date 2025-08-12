@@ -1,5 +1,10 @@
 <template>
   <article class="card">
+    <!-- collapses automatically when no cover -->
+    <div v-if="coverSrc(cover)" class="card-media">
+      <img :src="coverSrc(cover)" alt="" loading="lazy" decoding="async" />
+    </div>
+
     <!-- STAMP: only when status is not open -->
     <div
       v-if="status && status !== 'open'"
@@ -10,7 +15,6 @@
       {{ status === 'construction' ? 'Under construction' : 'Closed' }}
     </div>
 
-    <div class="card-media"></div>
     <div class="body">
       <div class="name">{{ name }}</div>
       <div class="meta">
@@ -49,19 +53,26 @@ defineProps({
   tags: { type: Array, default: () => [] },
   visited: Boolean,
   status: { type: String, default: 'open' },
+  cover: { type: Object, default: null }, // { sm:{webp,jpg}, md:{...}, lg:{...} }
 })
+
+function coverSrc(c) {
+  if (!c) return ''
+  return c.md?.webp || c.md?.jpg || c.sm?.webp || c.sm?.jpg || ''
+}
 </script>
 
 <style scoped>
 .card-media {
-  height: 140px;
-  background: radial-gradient(
-      600px 240px at 80% -40%,
-      var(--accent-soft),
-      transparent 60%
-    ),
-    linear-gradient(180deg, #0f1b2d, #0e1726);
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
   border-bottom: 1px solid var(--outline);
+}
+.card-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 .body {
   padding: 14px;

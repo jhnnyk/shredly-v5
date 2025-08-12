@@ -139,6 +139,28 @@ exports.processPhoto = onObjectFinalized(async (event) => {
       outputs[key] = { webp: webpUrl, jpg: jpgUrl }
     }
 
+    try {
+      const parkRef = db.doc(`parks/${parkId}`)
+      const psnap = await parkRef.get()
+      if (!psnap.exists || !psnap.get('cover')) {
+        await parkRef.set(
+          {
+            cover: {
+              sm: outputs.sm || null,
+              md: outputs.md || null,
+              lg: outputs.lg || null,
+              photoId,
+              by: userId,
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            },
+          },
+          { merge: true }
+        )
+      }
+    } catch (e) {
+      logger.warn('Could not set park cover', { parkId, err: String(e) })
+    }
+
     await photoRef.set(
       {
         status: 'ready',

@@ -36,6 +36,7 @@
         :tags="p.tags"
         :visited="visited.has(p.id)"
         @toggleVisited="toggleVisited(p.id)"
+        :cover="p.cover"
       />
     </div>
   </section>
