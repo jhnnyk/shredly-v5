@@ -26,7 +26,7 @@ logs/
 # misc
 .DS_Store
 Thumbs.db
-.firebase
+.firebase/
 
 # service account
 serviceAccount.json
