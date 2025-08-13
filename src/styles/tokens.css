@@ -135,7 +135,15 @@ p.tagline {
   border-radius: var(--radius);
   box-shadow: var(--shadow-1);
   padding: 14px;
+  font-size: 16px; /* ensure >=16px on mobile */
+  line-height: 1.2;
+  min-height: 40px;
 }
+
+.search::placeholder {
+  font-size: 16px;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -263,4 +271,19 @@ p.tagline {
 .meta span {
   display: inline-flex;
   align-items: center;
+}
+
+/* stop iOS zoom on focus by keeping controls >=16px */
+@media (max-width: 480px) {
+  input,
+  select,
+  textarea,
+  button {
+    font-size: 16px; /* key line */
+    line-height: 1.2;
+  }
+  /* if you style placeholders smaller, bump them too */
+  input::placeholder {
+    font-size: 16px;
+  }
 }
