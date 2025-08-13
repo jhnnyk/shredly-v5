@@ -2,10 +2,7 @@
   <section>
     <div class="hero card p-16">
       <h1>Shredly</h1>
-      <p>
-        Find every skatepark in the USA. Track where you’ve rolled. Share the
-        stoke.
-      </p>
+      <p>Gotta shred 'em all!</p>
     </div>
 
     <div class="section-title">Search</div>
