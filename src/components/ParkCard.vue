@@ -18,10 +18,31 @@
     <div class="body">
       <div class="name">{{ name }}</div>
       <div class="meta">
-        <span>📍 {{ cityState }}</span>
-        <span v-if="size">📏 {{ Number(size).toLocaleString() }} sqft</span>
-        <span v-if="builder">🏗️ {{ builder }}</span>
-        <span v-if="hours">🕒 {{ hours }}</span>
+        <span>
+          <i-material-symbols-location-on-outline-rounded
+            class="icon"
+            aria-hidden="true"
+          />
+          {{ cityState }}
+        </span>
+        <span v-if="size">
+          <i-material-symbols-square-foot class="icon" aria-hidden="true" />
+          {{ Number(size).toLocaleString() }} sqft
+        </span>
+        <span v-if="builder">
+          <i-material-symbols-construction-rounded
+            class="icon"
+            aria-hidden="true"
+          />
+          {{ builder }}
+        </span>
+        <span v-if="hours">
+          <i-material-symbols-schedule-outline
+            class="icon"
+            aria-hidden="true"
+          />
+          {{ hours }}
+        </span>
       </div>
       <div class="chips">
         <span v-for="t in tags" :key="t" class="tag">{{ t }}</span>

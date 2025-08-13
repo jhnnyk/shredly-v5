@@ -253,3 +253,16 @@ p.tagline {
   animation: shred-pulse 1.6s ease-out infinite;
   pointer-events: none;
 }
+
+.icon {
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: -0.18em;
+  margin-right: 5px;
+  color: var(--text-2);
+}
+.meta span {
+  display: inline-flex;
+  align-items: center;
+  /* gap: 0px; */
+}
