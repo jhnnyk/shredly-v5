@@ -34,7 +34,6 @@
         :hours="p.hours"
         :tags="p.tags"
         :visited="vstore.isVisited(p.id)"
-        @toggleVisited="vstore.toggle(p.id)"
         :cover="p.cover"
       />
     </div>
