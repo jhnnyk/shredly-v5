@@ -48,6 +48,12 @@ h1 {
   color: var(--accent);
 }
 
+h2 {
+  margin: 0;
+  font-family: 'Sedgwick Ave Display', cursive;
+  font-size: 28px;
+}
+
 p {
   color: var(--text-2);
 }

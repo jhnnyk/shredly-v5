@@ -118,7 +118,9 @@ const isNum = (v) => {
 .park-card {
   position: relative;
   padding: 0;
-} /* let media/border define shape */
+}
+
+/* let media/border define shape */
 .stretched-link {
   position: absolute;
   inset: 0;

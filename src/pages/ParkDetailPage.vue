@@ -1,27 +1,39 @@
 <template>
   <section class="page">
-    <div class="hero">
-      <div class="title">
-        <div class="name">{{ park?.name || 'Skatepark' }}</div>
-        <div class="sub">
+    <!-- hero (full-bleed) -->
+    <div class="hero" :class="{ 'has-image': !!heroUrl }">
+      <img v-if="heroUrl" class="hero-img" :src="heroUrl" alt="" />
+      <div class="hero-grad" aria-hidden="true"></div>
+
+      <div class="hero-overlay">
+        <h1 class="hero-name">{{ park?.name || 'Skatepark' }}</h1>
+        <p class="tagline">
+          <i-material-symbols-location-on-outline-rounded
+            class="icon"
+            aria-hidden="true"
+          />
           {{ [park?.city, park?.state].filter(Boolean).join(', ') }}
-        </div>
+        </p>
       </div>
-      <div class="actions">
-        <button class="btn" @click="toggleVisited">
-          {{ visited ? 'Visited ✓' : 'Mark visited' }}
-        </button>
-        <RouterLink class="btn" to="/map">Map</RouterLink>
-        <RouterLink
-          v-if="isAdmin"
-          class="btn btn-primary"
-          :to="`/admin/parks/${id}`"
-          >Edit</RouterLink
-        >
-      </div>
+
+      <!-- status stamp -->
       <div v-if="statusBadge" class="stamp" :class="statusBadge.class">
         {{ statusBadge.text }}
       </div>
+    </div>
+
+    <!-- keep actions BELOW the hero for a cleaner overlay -->
+    <div class="actions">
+      <button class="btn" @click="toggleVisited">
+        {{ visited ? 'Visited ✓' : 'Mark visited' }}
+      </button>
+      <RouterLink class="btn" to="/map">Map</RouterLink>
+      <RouterLink
+        v-if="isAdmin"
+        class="btn btn-primary"
+        :to="`/admin/parks/${id}`"
+        >Edit</RouterLink
+      >
     </div>
 
     <div class="grid2">
@@ -116,6 +128,30 @@ onMounted(async () => {
   onSnapshot(q, (snap) => {
     photos.value = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
   })
+})
+
+const heroUrl = computed(() => {
+  const c = park.value?.cover
+  const cover =
+    c?.lg?.webp ||
+    c?.lg?.jpg ||
+    c?.md?.webp ||
+    c?.md?.jpg ||
+    c?.sm?.webp ||
+    c?.sm?.jpg
+  if (cover) return cover
+
+  // fallback to the most recent ready photo
+  const ready = photos.value.find((p) => p.status === 'ready')
+  return (
+    ready?.outputs?.lg?.webp ||
+    ready?.outputs?.lg?.jpg ||
+    ready?.outputs?.md?.webp ||
+    ready?.outputs?.md?.jpg ||
+    ready?.outputs?.sm?.webp ||
+    ready?.outputs?.sm?.jpg ||
+    ''
+  )
 })
 
 const visited = computed(() => vstore.isVisited(String(id)))
@@ -230,29 +266,97 @@ watch(photos, (list) => {
 <style scoped>
 .page {
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
+
 .hero {
   position: relative;
-  border: 1px solid var(--outline);
-  border-radius: var(--radius);
-  padding: 14px;
-  background: linear-gradient(180deg, #0f1b2d, #0e1726);
+
+  /* make it full-width even inside a centered .page container */
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+
+  margin-top: -16px;
+
+  height: clamp(140px, 30vh, 220px);
+  background: linear-gradient(
+    180deg,
+    #0f1b2d,
+    #0e1726
+  ); /* fallback when no image */
+  border-bottom: 1px solid var(--outline);
+  overflow: hidden;
 }
-.title .name {
+.hero.has-image {
+  border-bottom-color: transparent;
+}
+
+.hero-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transform: translateZ(0); /* better scrolling perf on iOS */
+}
+
+/* top-to-bottom gradient for text legibility on busy photos */
+.hero-grad {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+      to top,
+      rgba(6, 12, 22, 0.78) 0%,
+      rgba(6, 12, 22, 0.48) 40%,
+      rgba(6, 12, 22, 0) 70%
+    ),
+    linear-gradient(to bottom, rgba(6, 12, 22, 0.2), rgba(6, 12, 22, 0) 40%);
+}
+
+/* the translucent bottom overlay panel */
+.hero-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  padding: 14px 16px 18px;
+  background: rgba(10, 20, 35, 0.42);
+  backdrop-filter: blur(2px);
+  box-shadow: 0 -24px 48px -16px rgba(10, 20, 35, 0.55) inset;
+}
+
+.hero-name {
+  margin: 0;
   font-family: 'Sedgwick Ave Display', cursive;
-  font-size: 28px;
+  font-size: clamp(22px, 5.2vw, 34px);
+  letter-spacing: 0.2px;
+  line-height: 1.05;
+  color: var(--text);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
 }
-.title .sub {
+
+.tagline {
+  margin: 0.25rem 0 0;
   color: var(--text-2);
-  font-size: 13px;
+  font-size: clamp(12px, 3.4vw, 14px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
 }
+
 .actions {
-  margin-top: 10px;
+  margin-top: 12px;
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  padding: 0 4px; /* aligns with your content nicely */
 }
+
 .stamp {
   position: absolute;
   top: 12px;
@@ -266,6 +370,7 @@ watch(photos, (list) => {
   line-height: 1;
   user-select: none;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  z-index: 3;
 }
 .stamp.closed {
   color: #ff99b1;
