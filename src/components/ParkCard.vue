@@ -49,6 +49,22 @@
           <i-material-symbols-square-foot class="icon" aria-hidden="true" />
           {{ Number(size).toLocaleString() }} sqft
         </span>
+
+        <span v-if="isNum(visitorsCount)">
+          <i-material-symbols-group-outline-rounded
+            class="icon"
+            aria-hidden="true"
+          />
+          {{ Number(visitorsCount).toLocaleString() }}
+        </span>
+
+        <span v-if="isNum(photosCount)">
+          <i-material-symbols-photo-camera-outline-rounded
+            class="icon"
+            aria-hidden="true"
+          />
+          {{ Number(photosCount).toLocaleString() }}
+        </span>
       </div>
     </div>
   </article>
@@ -68,6 +84,8 @@ const {
   visited = false,
   status = 'open',
   cover = null,
+  visitorsCount = undefined,
+  photosCount = undefined,
 } = defineProps({
   id: { type: String, required: false },
   name: String,
@@ -79,6 +97,8 @@ const {
   visited: Boolean,
   status: { type: String, default: 'open' },
   cover: { type: Object, default: null }, // { sm:{webp,jpg}, md:{...}, lg:{...} }
+  visitorsCount: [Number, String],
+  photosCount: [Number, String],
 })
 
 const coverUrl = computed(() => {
@@ -87,6 +107,11 @@ const coverUrl = computed(() => {
     cover.md?.webp || cover.md?.jpg || cover.sm?.webp || cover.sm?.jpg || ''
   )
 })
+
+const isNum = (v) => {
+  const n = Number(v)
+  return Number.isFinite(n)
+}
 </script>
 
 <style scoped>

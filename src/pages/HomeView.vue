@@ -35,6 +35,8 @@
         :tags="p.tags"
         :visited="vstore.isVisited(p.id)"
         :cover="p.cover"
+        :visitorsCount="p.visitorsCount"
+        :photosCount="p.photosCount"
       />
     </div>
   </section>

@@ -12,6 +12,7 @@ admin.initializeApp()
 
 const db = admin.firestore()
 const storage = admin.storage()
+const FieldValue = admin.firestore.FieldValue
 
 const SIZES = [
   { key: 'sm', w: 512 },
@@ -189,25 +190,62 @@ exports.processPhoto = onObjectFinalized(async (event) => {
   }
 })
 
-// Increment/decrement users/{uid}.visitedCount when visited docs change
-exports.visitedCounter = onDocumentWritten(
+// When a user marks a park visited/unvisited:
+// - bump users/{uid}.visitedCount
+// - bump parks/{parkId}.visitorsCount
+exports.visitedTally = onDocumentWritten(
   'users/{uid}/visited/{parkId}',
   async (event) => {
     const before = event.data.before.exists
     const after = event.data.after.exists
-    if (before === after) return // no net change
+    if (before === after) return
 
-    const { uid } = event.params
+    const { uid, parkId } = event.params
     const delta = !before && after ? 1 : -1
-    await admin
-      .firestore()
-      .doc(`users/${uid}`)
-      .set(
-        {
-          visitedCount: admin.firestore.FieldValue.increment(delta),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      )
+
+    const db = admin.firestore()
+    const batch = db.batch()
+    batch.set(
+      db.doc(`users/${uid}`),
+      {
+        visitedCount: FieldValue.increment(delta),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    )
+    batch.set(
+      db.doc(`parks/${parkId}`),
+      {
+        visitorsCount: FieldValue.increment(delta),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    )
+    await batch.commit()
   }
 )
+
+// When a photo becomes 'ready' (or is reverted/removed):
+// - bump parks/{parkId}.photosCount
+exports.photosTally = onDocumentWritten('photos/{photoId}', async (event) => {
+  const before = event.data.before.data()
+  const after = event.data.after.data()
+  const beforeReady = !!(before && before.status === 'ready')
+  const afterReady = !!(after && after.status === 'ready')
+  if (beforeReady === afterReady) return
+
+  const parkId = after?.parkId || before?.parkId
+  if (!parkId) return
+
+  const delta = !beforeReady && afterReady ? 1 : -1
+  await admin
+    .firestore()
+    .doc(`parks/${parkId}`)
+    .set(
+      {
+        photosCount: FieldValue.increment(delta),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    )
+})
