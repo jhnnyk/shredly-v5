@@ -46,31 +46,9 @@
           {{ cityState }}
         </span>
         <span v-if="size">
-          <i-material-symbols-straighten-outline-rounded
-            class="icon"
-            aria-hidden="true"
-          />
+          <i-material-symbols-square-foot class="icon" aria-hidden="true" />
           {{ Number(size).toLocaleString() }} sqft
         </span>
-        <span v-if="builder">
-          <i-material-symbols-build-outline-rounded
-            class="icon"
-            aria-hidden="true"
-          />
-          {{ builder }}
-        </span>
-        <span v-if="hours">
-          <i-material-symbols-schedule-outline-rounded
-            class="icon"
-            aria-hidden="true"
-          />
-          {{ hours }}
-        </span>
-      </div>
-
-      <div v-if="tags?.length" class="chips">
-        <span v-for="t in shortTags" :key="t" class="tag">{{ t }}</span>
-        <span v-if="moreTags > 0" class="tag more">+{{ moreTags }}</span>
       </div>
     </div>
   </article>
@@ -109,9 +87,6 @@ const coverUrl = computed(() => {
     cover.md?.webp || cover.md?.jpg || cover.sm?.webp || cover.sm?.jpg || ''
   )
 })
-
-const shortTags = computed(() => (tags || []).slice(0, 2))
-const moreTags = computed(() => Math.max(0, (tags || []).length - 2))
 </script>
 
 <style scoped>
@@ -122,7 +97,7 @@ const moreTags = computed(() => Math.max(0, (tags || []).length - 2))
 .stretched-link {
   position: absolute;
   inset: 0;
-  z-index: 5;
+  z-index: 7;
 }
 
 .card-media {
@@ -130,6 +105,7 @@ const moreTags = computed(() => Math.max(0, (tags || []).length - 2))
   overflow: hidden;
   border-bottom: 1px solid var(--outline);
 }
+
 .card-media img {
   width: 100%;
   height: 100%;
@@ -151,7 +127,7 @@ const moreTags = computed(() => Math.max(0, (tags || []).length - 2))
 }
 .name {
   font-family: 'Sedgwick Ave Display', cursive;
-  font-size: 18px;
+  font-size: 20px;
   letter-spacing: 0.2px;
   line-height: 1.1;
   flex: 1;
@@ -159,12 +135,7 @@ const moreTags = computed(() => Math.max(0, (tags || []).length - 2))
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.icon {
-  width: 1.1em;
-  height: 1.1em;
-  vertical-align: -0.18em;
-  color: var(--text-2);
-}
+
 .icon--visited {
   color: #24d87a;
 }
@@ -187,44 +158,17 @@ const moreTags = computed(() => Math.max(0, (tags || []).length - 2))
 .park-card.has-cover .name {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
-.park-card.has-cover .meta,
-.park-card.has-cover .tag {
+.park-card.has-cover .meta {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
 /* tight, wrap-friendly meta row */
 .meta {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
   font-size: 12px;
   color: var(--text-2);
-}
-.meta span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-/* chips: show only a couple to stay compact */
-.chips {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-.tag {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: #10233a;
-  border: 1px solid #2b3b5a;
-  color: var(--text-2);
-  font-weight: 700;
-  font-size: 11px;
-}
-.tag.more {
-  opacity: 0.85;
 }
 
 /* status stamp stays as you had it */
@@ -254,21 +198,6 @@ const moreTags = computed(() => Math.max(0, (tags || []).length - 2))
   color: #ffef9a;
   background: rgba(44, 42, 20, 0.45);
   border: 2px solid #5a5520;
-}
-
-/* slightly denser on small screens */
-@media (max-width: 480px) {
-  .body {
-    padding: 8px 10px;
-    gap: 5px;
-  }
-  .name {
-    font-size: 17px;
-  }
-  .meta {
-    font-size: 11.5px;
-    gap: 8px;
-  }
 }
 
 /* a subtle fade from bottom upward to help text legibility */

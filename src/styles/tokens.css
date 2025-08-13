@@ -212,6 +212,7 @@ p.tagline {
   grid-template-columns: 1fr 1fr 1fr;
   z-index: 60;
 }
+
 .bottom-nav a {
   display: flex;
   flex-direction: column;
@@ -221,13 +222,9 @@ p.tagline {
   color: var(--text-2);
   text-decoration: none;
 }
+
 .bottom-nav a[aria-current='page'] {
   color: var(--text);
-}
-.icon {
-  width: 22px;
-  height: 22px;
-  display: inline-block;
 }
 
 /* --- Global pulse for user location --- */
@@ -245,6 +242,7 @@ p.tagline {
     opacity: 0;
   }
 }
+
 .pulse-ring {
   position: absolute;
   inset: -8px;
@@ -255,14 +253,14 @@ p.tagline {
 }
 
 .icon {
-  width: 1.2em;
-  height: 1.2em;
+  width: 1.3em;
+  height: 1.3em;
   vertical-align: -0.18em;
-  margin-right: 5px;
+  margin-right: 2px;
   color: var(--text-2);
 }
+
 .meta span {
   display: inline-flex;
   align-items: center;
-  /* gap: 0px; */
 }
