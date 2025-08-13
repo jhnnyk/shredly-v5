@@ -61,10 +61,4 @@ const parks = computed(() => store.filteredParks)
 function onSearch() {
   store.setQuery(q.value)
 }
-function toggleVisited(id) {
-  store.toggleVisited(id)
-}
-function openDetails(id) {
-  alert('Details stub for ' + id)
-}
 </script>
