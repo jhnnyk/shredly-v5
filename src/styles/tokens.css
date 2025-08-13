@@ -64,11 +64,13 @@ input {
   appearance: none;
   border: 1px solid transparent;
   border-radius: 999px;
-  padding: 10px 16px;
-  background: var(--muted);
+  padding: 5px 10px;
+  margin-bottom: 10px;
+  height: 42px;
+  /* background: var(--muted); */
   color: var(--text);
   cursor: pointer;
-  font-weight: 700;
+  font-weight: bold;
   transition: transform 0.06s ease, background 0.15s ease, box-shadow 0.15s ease,
     border-color 0.15s ease;
 }
@@ -76,9 +78,8 @@ input {
   transform: translateY(-1px);
 }
 .btn-primary {
-  background: linear-gradient(180deg, var(--accent-2), var(--accent));
-  color: #0b0b10;
-  border: 1px solid #ff94cb;
+  background: var(--accent);
+  color: var(--text);
 }
 .btn-ghost {
   background: rgba(255, 255, 255, 0.02);
@@ -108,13 +109,7 @@ input {
   overflow: hidden;
   box-shadow: var(--shadow-1);
 }
-.section-title {
-  margin: 20px 0 10px;
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
-  color: var(--text-2);
-}
+
 .badge {
   padding: 4px 10px;
   border-radius: 999px;
@@ -135,18 +130,20 @@ input {
   color: var(--text-2);
 }
 .search {
-  background: var(--bg-elev);
-  border: 1px solid var(--outline);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-1);
-  padding: 14px;
+  display: flex;
+  align-items: center;
+  padding: 16px 0 24px 0;
   font-size: 16px; /* ensure >=16px on mobile */
   line-height: 1.2;
-  min-height: 40px;
+  height: 40px;
 }
 
 .search::placeholder {
   font-size: 16px;
+}
+
+.search input {
+  background-color: var(--bg-elev-2);
 }
 
 .modal-backdrop {
@@ -284,8 +281,7 @@ input {
   select,
   textarea,
   button {
-    font-size: 16px; /* key line */
-    line-height: 1.2;
+    font-size: 16px;
   }
   /* if you style placeholders smaller, bump them too */
   input::placeholder {

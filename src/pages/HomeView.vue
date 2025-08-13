@@ -3,7 +3,6 @@
     <h1>Shredly</h1>
     <p class="tagline">Gotta shred 'em all!</p>
 
-    <div class="section-title">Search</div>
     <div class="search grid" style="grid-template-columns: 1fr auto; gap: 10px">
       <input
         class="input"
@@ -14,7 +13,6 @@
       <button class="btn btn-primary" @click="onSearch">Search</button>
     </div>
 
-    <div class="section-title">Parks</div>
     <div
       class="grid"
       style="
