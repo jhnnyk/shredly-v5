@@ -1,9 +1,7 @@
 <template>
   <section>
-    <div class="hero card p-16">
-      <h1>Shredly</h1>
-      <p>Gotta shred 'em all!</p>
-    </div>
+    <h1>Shredly</h1>
+    <p class="tagline">Gotta shred 'em all!</p>
 
     <div class="section-title">Search</div>
     <div class="search grid" style="grid-template-columns: 1fr auto; gap: 10px">

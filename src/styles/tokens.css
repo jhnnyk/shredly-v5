@@ -40,6 +40,22 @@ a {
 a:hover {
   text-decoration: underline;
 }
+
+h1 {
+  margin: 0;
+  font-family: 'Sonsie One', system-ui;
+  font-size: 32px;
+  color: var(--accent);
+}
+
+p {
+  color: var(--text-2);
+}
+
+p.tagline {
+  margin: 0;
+}
+
 .btn {
   appearance: none;
   border: 1px solid transparent;
@@ -108,20 +124,7 @@ a:hover {
   padding: 16px;
   padding-bottom: calc(var(--nav-h) + 24px);
 }
-.hero {
-  background: linear-gradient(
-    180deg,
-    rgba(255, 62, 165, 0.08),
-    rgba(255, 62, 165, 0) 40%
-  );
-  border: 1px dashed rgba(255, 255, 255, 0.08);
-}
-.hero h1 {
-  margin: 0;
-  font-family: 'Sonsie One', system-ui;
-  font-size: 28px;
-  letter-spacing: 0.3px;
-}
+
 .hero p {
   margin: 6px 0 0 0;
   color: var(--text-2);
