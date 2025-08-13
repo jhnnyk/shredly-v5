@@ -1,5 +1,5 @@
 <template>
-  <form @submit.prevent="onSave" class="card p-16">
+  <form @submit.prevent="onSave" @keydown.enter.prevent class="card p-16">
     <div class="flex items-center justify-between">
       <h2 style="margin: 0; font-family: 'Sonsie One', system-ui">
         {{ isNew ? 'New Park' : 'Edit Park' }}
@@ -51,6 +51,9 @@
             type="number"
             step="any"
             required
+            inputmode="decimal"
+            min="-90"
+            max="90"
           />
         </div>
         <div>
@@ -61,6 +64,9 @@
             type="number"
             step="any"
             required
+            inputmode="decimal"
+            min="-180"
+            max="180"
           />
         </div>
       </div>
@@ -115,15 +121,15 @@
         </select>
       </div>
 
+      <!-- Tags -->
       <div>
-        <label>Tags (comma-separated)</label>
-        <input
-          class="input"
-          v-model="tagsText"
-          placeholder="indoor, lights, prefab"
+        <label>Tags</label>
+        <TagInput
+          v-model="local.tags"
+          placeholder="Add tags (comma, space, or Enter)"
         />
-        <div class="mt-8">
-          <span v-for="t in parsedTags" :key="t" class="tag">{{ t }}</span>
+        <div class="hint">
+          Press comma, space, or Enter to add. Paste works too.
         </div>
       </div>
     </div>
@@ -131,7 +137,8 @@
 </template>
 
 <script setup>
-import { computed, reactive, watch } from 'vue'
+import { reactive, watch } from 'vue'
+import TagInput from './TagInput.vue'
 
 const props = defineProps({
   modelValue: { type: Object, default: () => ({}) },
@@ -139,27 +146,76 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:modelValue', 'save', 'cancel'])
 
-const local = reactive({ ...props.modelValue })
+// Ensure tags is always an array in local state
+const local = reactive({
+  name: '',
+  address: '',
+  city: '',
+  state: '',
+  lat: null,
+  lng: null,
+  sizeSqft: null,
+  builder: '',
+  openedYear: null,
+  hours: '',
+  status: 'open',
+  tags: Array.isArray(props.modelValue?.tags) ? props.modelValue.tags : [],
+  ...props.modelValue,
+})
+
+// Keep local in sync if parent modelValue changes
 watch(
   () => props.modelValue,
-  (v) => Object.assign(local, v || {})
+  (v) => {
+    Object.assign(local, v || {})
+    if (!Array.isArray(local.tags)) local.tags = []
+  }
 )
 
-const tagsText = computed({
-  get() {
-    return (local.tags || []).join(', ')
-  },
-  set(v) {
-    local.tags = v
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean)
-  },
-})
-const parsedTags = computed(() => local.tags || [])
+function toNum(v) {
+  if (typeof v === 'string') v = v.replace(',', '.').trim()
+  const n = Number(v)
+  return Number.isFinite(n) ? n : NaN
+}
+
+function normalizeTags(arr) {
+  const out = []
+  const seen = new Set()
+  for (const t of arr || []) {
+    const v = String(t).trim().replace(/\s+/g, ' ')
+    if (v && !seen.has(v)) {
+      seen.add(v)
+      out.push(v)
+    }
+  }
+  return out
+}
 
 function onSave() {
-  if (!local.name || local.lat == null || local.lng == null) return
-  emit('save', { ...local, tags: parsedTags.value })
+  // required fields
+  if (!local.name) return
+  const lat = toNum(local.lat)
+  const lng = toNum(local.lng)
+  // bounds check
+  if (
+    !Number.isFinite(lat) ||
+    lat < -90 ||
+    lat > 90 ||
+    !Number.isFinite(lng) ||
+    lng < -180 ||
+    lng > 180
+  ) {
+    alert('Please enter valid coordinates: lat −90..90, lng −180..180.')
+    return
+  }
+  // optional small normalizations
+  if (local.state) local.state = String(local.state).trim().toUpperCase()
+  if (
+    local.openedYear &&
+    (local.openedYear < 1900 || local.openedYear > 2100)
+  ) {
+    local.openedYear = null
+  }
+  emit('save', { ...local, lat, lng, tags: normalizeTags(local.tags) })
 }
 </script>

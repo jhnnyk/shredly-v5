@@ -25,7 +25,7 @@
     </div>
 
     <div class="grid2">
-      <div class="card">
+      <div class="card p-12">
         <div class="section-title">Details</div>
         <ul class="facts">
           <li v-if="park?.sizeSqft">
@@ -41,7 +41,7 @@
         </div>
       </div>
 
-      <div class="card">
+      <div class="card p-12">
         <div class="section-title">Add a photo</div>
         <div class="uploader">
           <input
@@ -60,7 +60,7 @@
         </div>
       </div>
 
-      <div class="card">
+      <div class="card p-16">
         <div class="section-title">Photos</div>
         <PhotoGrid
           v-if="photos.length"
