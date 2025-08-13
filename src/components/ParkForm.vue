@@ -31,14 +31,21 @@
         />
       </div>
 
-      <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 12px">
+      <div
+        class="grid"
+        style="grid-template-columns: 2fr 0.5fr 1fr; gap: 12px; width: 90%"
+      >
         <div>
           <label>City</label>
-          <input class="input" v-model="local.city" />
+          <input class="input" v-model="local.city" placeholder="Springfield" />
         </div>
         <div>
           <label>State</label>
           <input class="input" v-model="local.state" placeholder="CO" />
+        </div>
+        <div>
+          <label>Zip</label>
+          <input class="input" v-model="local.zip" placeholder="80126" />
         </div>
       </div>
 
@@ -152,6 +159,7 @@ const local = reactive({
   address: '',
   city: '',
   state: '',
+  zip: '',
   lat: null,
   lng: null,
   sizeSqft: null,

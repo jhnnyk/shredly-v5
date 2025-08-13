@@ -35,6 +35,7 @@ onMounted(async () => {
       address: '',
       city: '',
       state: '',
+      zip: '',
       lat: null,
       lng: null,
       sizeSqft: null,
