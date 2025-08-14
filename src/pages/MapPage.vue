@@ -240,9 +240,6 @@ function openPopupForPark(p) {
       <div class="pp-sub">${p.city || ''}${p.state ? `, ${p.state}` : ''}</div>
       <div class="pp-actions">
         <button class="pp-btn pp-view">View details</button>
-        <button class="pp-btn pp-visit">${
-          visited.value.has(p.id) ? 'Visited ✓' : 'Mark visited'
-        }</button>
       </div>
     </div>`
 
@@ -608,7 +605,7 @@ window.addEventListener('resize', () => setTimeout(fitToContent(10), 150))
 
 /* Make sure markers are on top and clickable in Safari */
 :deep(.maplibregl-marker) {
-  z-index: 40;
+  /* z-index: 40; */
   pointer-events: auto !important;
 }
 
