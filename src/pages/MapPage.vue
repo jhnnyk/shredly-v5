@@ -420,15 +420,6 @@ watch(
   }
 )
 
-watch(visited, () => {
-  if (!openPopup || !currentPopupParkId) return
-  const btn = document.querySelector('.park-popup .pp-visit')
-  if (btn)
-    btn.textContent = visited.value.has(currentPopupParkId)
-      ? 'Visited ✓'
-      : 'Mark visited'
-})
-
 watch(
   () => vstore.set,
   () => {
