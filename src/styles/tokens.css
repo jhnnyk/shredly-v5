@@ -68,17 +68,19 @@ input {
 
 .btn {
   appearance: none;
-  border: 1px solid transparent;
+  border: 2px solid var(--accent);
   border-radius: 999px;
-  padding: 5px 10px;
+  padding: 12px 15px;
   margin-bottom: 10px;
-  height: 42px;
+  font-size: 0.9em;
   background: var(--muted);
-  color: var(--text);
+  color: var(--accent);
   cursor: pointer;
   font-weight: bold;
   transition: transform 0.06s ease, background 0.15s ease, box-shadow 0.15s ease,
     border-color 0.15s ease;
+  display: flex;
+  align-items: center;
 }
 .btn:hover {
   transform: translateY(-1px);
