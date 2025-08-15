@@ -64,6 +64,7 @@ p.tagline {
 
 input {
   box-sizing: border-box;
+  background-color: var(--bg-elev);
 }
 
 .btn {
@@ -96,7 +97,6 @@ input {
 .input {
   width: 100%;
   border-radius: 999px;
-  background: #0e1a2b;
   border: 1px solid var(--outline);
   color: var(--text);
   padding: 12px 16px;
@@ -111,7 +111,7 @@ input {
   border-color: #3a4d6c;
 }
 .card {
-  background: linear-gradient(180deg, var(--bg-elev), var(--bg-elev-2));
+  background: var(--bg-elev);
   border: 1px solid var(--outline);
   border-radius: var(--radius);
   overflow: hidden;
@@ -148,10 +148,6 @@ input {
 
 .search::placeholder {
   font-size: 16px;
-}
-
-.search input {
-  background-color: var(--bg-elev-2);
 }
 
 .modal-backdrop {
