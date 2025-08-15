@@ -67,6 +67,11 @@ input {
   background-color: var(--bg-elev);
 }
 
+select {
+  background-color: var(--bg-elev);
+  height: 25px;
+}
+
 .btn {
   appearance: none;
   border: 2px solid var(--accent);
