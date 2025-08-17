@@ -110,7 +110,7 @@ const nearest = computed(() => {
       _d: haversine(center.value, { lat: p.lat, lng: p.lng }),
     }))
     .sort((a, b) => a._d - b._d)
-    .slice(0, 50)
+  // .slice(0, 50)
 })
 
 function toggleVisited(id) {
