@@ -76,13 +76,23 @@
         <div class="section-title">Photos</div>
         <PhotoGrid
           v-if="photos.length"
-          :photos="photos"
+          :photos="viewablePhotos"
           :localPreview="localPreview"
           :uploadProgress="uploadProgress"
           :showCredit="true"
           credit-type="user"
+          @open="openLB"
         />
+
         <div v-else class="muted">No photos yet.</div>
+
+        <!-- Lightbox -->
+        <PhotoLightbox
+          v-model:show="showLB"
+          :photos="viewablePhotos"
+          :startIndex="lbIndex"
+          :localPreview="localPreview"
+        />
       </div>
     </div>
   </section>
@@ -106,6 +116,7 @@ import { useParksStore } from '../store/parksStore'
 import { useAuthStore } from '../store/authStore'
 import { useVisitedStore } from '../store/visitedStore'
 import PhotoGrid from '../components/PhotoGrid.vue'
+import PhotoLightbox from '../components/PhotoLightbox.vue'
 
 const route = useRoute()
 const store = useParksStore()
@@ -116,6 +127,8 @@ const id = route.params.id
 const park = ref(null)
 const photos = ref([])
 const uploading = ref(false)
+const showLB = ref(false)
+const lbIndex = ref(0)
 
 onMounted(async () => {
   park.value = await store.loadOne(String(id))
@@ -261,6 +274,19 @@ watch(photos, (list) => {
     }
   }
 })
+
+const viewablePhotos = computed(() =>
+  photos.value.filter((p) => p.status === 'ready' || !!localPreview.value[p.id])
+)
+function openLB(idOrIndex) {
+  const list = viewablePhotos.value
+  const i =
+    typeof idOrIndex === 'number'
+      ? idOrIndex
+      : list.findIndex((p) => p.id === idOrIndex)
+  lbIndex.value = i >= 0 ? i : 0
+  showLB.value = true
+}
 </script>
 
 <style scoped>

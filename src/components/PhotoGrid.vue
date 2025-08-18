@@ -60,7 +60,7 @@ async function removePhoto(id) {
 
 <template>
   <div class="photos">
-    <div class="photo-tile" v-for="p in photos" :key="p.id">
+    <div class="photo-tile" v-for="(p, i) in photos" :key="p.id">
       <!-- local preview (e.g. JPEG/PNG/WebP) -->
       <img v-if="localPreview[p.id]" :src="localPreview[p.id]" alt="" />
 
@@ -73,6 +73,7 @@ async function removePhoto(id) {
         loading="lazy"
         decoding="async"
         alt=""
+        @click="$emit('open', p.id)"
       />
 
       <!-- processing / upload -->
