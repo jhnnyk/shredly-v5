@@ -1,6 +1,11 @@
 <!-- src/components/PhotoGrid.vue -->
 <script setup>
+import { doc, deleteDoc } from 'firebase/firestore'
+import { db } from '../lib/firebase'
+import { useAuthStore } from '../store/authStore'
 import { RouterLink } from 'vue-router'
+
+const auth = useAuthStore()
 
 const props = defineProps({
   photos: { type: Array, default: () => [] },
@@ -35,6 +40,21 @@ function srcSet(p) {
     if (o.lg?.jpg) parts.push(`${o.lg.jpg} 1600w`)
   }
   return parts.join(', ')
+}
+
+function canDelete(p) {
+  return auth?.isAdmin || (auth?.user && p.userId === auth.user.uid)
+}
+
+async function removePhoto(id) {
+  if (!confirm('Delete this photo? This cannot be undone.')) return
+  try {
+    await deleteDoc(doc(db, 'photos', id))
+    // onSnapshot stream will drop it from UI automatically
+  } catch (e) {
+    console.error(e)
+    alert('Could not delete photo.')
+  }
 }
 </script>
 
@@ -90,6 +110,18 @@ function srcSet(p) {
       >
         View park
       </RouterLink>
+
+      <!-- delete -->
+      <button
+        v-if="canDelete(p)"
+        class="tiny danger"
+        @click="removePhoto(p.id)"
+      >
+        <i-material-symbols-delete-outline-rounded
+          class="icon"
+          aria-hidden="true"
+        />
+      </button>
     </div>
   </div>
 </template>
@@ -186,5 +218,21 @@ function srcSet(p) {
   width: 0%;
   background: linear-gradient(180deg, var(--accent-2), var(--accent));
   transition: width 0.15s ease;
+}
+
+.tiny.danger .icon {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: #3a1420;
+  border: 1px solid #6b1a2a;
+  color: #ff99b1;
+  cursor: pointer;
+}
+.tiny.danger:hover {
+  filter: brightness(1.05);
 }
 </style>

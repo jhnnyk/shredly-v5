@@ -1,14 +1,17 @@
 // functions/index.js
 const { onObjectFinalized } = require('firebase-functions/v2/storage')
 const { setGlobalOptions } = require('firebase-functions/v2')
-const { onDocumentWritten } = require('firebase-functions/v2/firestore')
+const {
+  onDocumentDeleted,
+  onDocumentWritten,
+} = require('firebase-functions/v2/firestore')
 const logger = require('firebase-functions/logger')
 const admin = require('firebase-admin')
 const sharp = require('sharp')
 const { v4: uuidv4 } = require('uuid')
 
 setGlobalOptions({ region: 'us-central1', memory: '1GiB', timeoutSeconds: 540 })
-admin.initializeApp()
+admin.apps.length || admin.initializeApp()
 
 const db = admin.firestore()
 const storage = admin.storage()
@@ -248,4 +251,24 @@ exports.photosTally = onDocumentWritten('photos/{photoId}', async (event) => {
       },
       { merge: true }
     )
+})
+
+exports.cleanupPhoto = onDocumentDeleted('photos/{photoId}', async (event) => {
+  const data = event.data?.previous?.data()
+  if (!data) return
+
+  const { userId, parkId } = data
+  const photoId = event.params.photoId
+  const bucket = admin.storage().bucket() // correct <project-id>.appspot.com
+
+  // original upload + all derived sizes
+  const prefixes = [
+    `uploads/${userId}/${photoId}/`, // original
+    `public/parks/${parkId}/photos/${photoId}/`, // outputs
+  ]
+
+  for (const prefix of prefixes) {
+    const [files] = await bucket.getFiles({ prefix })
+    await Promise.all(files.map((f) => f.delete().catch(() => {})))
+  }
 })

@@ -35,15 +35,22 @@ service cloud.firestore {
 
     // Public photo metadata for parks
     match /photos/{photoId} {
-      allow read: if true; // anyone can view photos metadata
-      // users can create their own upload record
+      // anyone can view photo metadata
+      allow read: if true;
+
+      // users create their own upload record
       allow create: if request.auth != null
                     && request.resource.data.userId == request.auth.uid
                     && request.resource.data.parkId is string
-                    && request.resource.data.status in ['uploading', 'processing']
-                    && request.time == request.resource.data.createdAt;
-      // optional: allow user to update their record with a caption; function bypasses rules anyway
-      allow update, delete: if false;
+                    && request.resource.data.status in ['uploading','processing']
+                    && ('createdAt' in request.resource.data);
+
+      // ✅ owners OR admins can delete any photo (ready/processing/failed)
+      allow delete: if request.auth != null
+                    && (request.auth.uid == resource.data.userId || isAdmin());
+
+      // no direct updates from clients
+      allow update: if false;
     }
 
     // Each user can create/delete their own visited park docs
