@@ -76,7 +76,7 @@
         <div class="section-title">Photos</div>
         <PhotoGrid
           v-if="photos.length"
-          :photos="viewablePhotos"
+          :photos="photos"
           :localPreview="localPreview"
           :uploadProgress="uploadProgress"
           :showCredit="true"

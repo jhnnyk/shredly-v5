@@ -6,7 +6,6 @@ import { useAuthStore } from '../store/authStore'
 import { RouterLink } from 'vue-router'
 
 const auth = useAuthStore()
-
 const props = defineProps({
   photos: { type: Array, default: () => [] },
 
@@ -18,6 +17,7 @@ const props = defineProps({
   showCredit: { type: Boolean, default: false },
   creditType: { type: String, default: 'user' }, // 'user' | 'park'
 })
+const emit = defineEmits(['open'])
 
 function bestSrc(p) {
   return (
@@ -56,11 +56,26 @@ async function removePhoto(id) {
     alert('Could not delete photo.')
   }
 }
+
+/** Open lightbox from a tile click, but only for ready images */
+function openFromGrid(p) {
+  if (!p || p.status !== 'ready' || !bestSrc(p)) return
+  emit('open', p.id) // parent already expects id; your openLB maps id -> index
+}
 </script>
 
 <template>
   <div class="photos">
-    <div class="photo-tile" v-for="(p, i) in photos" :key="p.id">
+    <!-- Make each tile clickable as a whole so it’s easy to stop propagation from children -->
+    <div
+      class="photo-tile"
+      v-for="(p, i) in photos"
+      :key="p.id"
+      role="button"
+      tabindex="0"
+      @click="openFromGrid(p)"
+      @keydown.enter.prevent="openFromGrid(p)"
+    >
       <!-- local preview (e.g. JPEG/PNG/WebP) -->
       <img v-if="localPreview[p.id]" :src="localPreview[p.id]" alt="" />
 
@@ -73,10 +88,9 @@ async function removePhoto(id) {
         loading="lazy"
         decoding="async"
         alt=""
-        @click="$emit('open', p.id)"
       />
 
-      <!-- processing / upload -->
+      <!-- processing / upload (remains visible) -->
       <div v-if="(p.status || 'uploading') !== 'ready'" class="ph processing">
         <div class="label">
           {{
@@ -95,11 +109,12 @@ async function removePhoto(id) {
         </div>
       </div>
 
-      <!-- credit overlay -->
+      <!-- credit overlay (don’t open lightbox) -->
       <RouterLink
         v-if="showCredit && creditType === 'user' && p.userId"
         class="credit"
         :to="{ name: 'profile', params: { uid: p.userId } }"
+        @click.stop
       >
         {{ p.userDisplayName || 'User' }}
       </RouterLink>
@@ -108,15 +123,19 @@ async function removePhoto(id) {
         v-else-if="showCredit && creditType === 'park' && p.parkId"
         class="credit"
         :to="{ name: 'park', params: { id: p.parkId } }"
+        @click.stop
       >
         View park
       </RouterLink>
 
-      <!-- delete -->
+      <!-- delete (don’t open lightbox) -->
       <button
         v-if="canDelete(p)"
         class="tiny danger"
-        @click="removePhoto(p.id)"
+        type="button"
+        title="Delete photo"
+        @click.stop.prevent="removePhoto(p.id)"
+        @keydown.stop
       >
         <i-material-symbols-delete-outline-rounded
           class="icon"
@@ -148,6 +167,8 @@ async function removePhoto(id) {
   overflow: hidden;
   background: #0e1726;
   border: 1px solid var(--outline);
+  cursor: pointer;
+  /* Ensure overlay buttons click cleanly even over the image */
 }
 .photo-tile img {
   width: 100%;
@@ -178,8 +199,9 @@ async function removePhoto(id) {
 
 /* processing / upload UI */
 .ph.processing {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -221,10 +243,16 @@ async function removePhoto(id) {
   transition: width 0.15s ease;
 }
 
-.tiny.danger .icon {
+/* delete button overlay */
+.tiny.danger {
   position: absolute;
   top: 6px;
   right: 6px;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+.tiny.danger .icon {
   font-size: 12px;
   padding: 4px 8px;
   border-radius: 8px;
