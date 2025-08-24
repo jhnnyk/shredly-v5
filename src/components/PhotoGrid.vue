@@ -251,6 +251,7 @@ function openFromGrid(p) {
   background: transparent;
   border: none;
   padding: 0;
+  z-index: 3;
 }
 .tiny.danger .icon {
   font-size: 12px;
