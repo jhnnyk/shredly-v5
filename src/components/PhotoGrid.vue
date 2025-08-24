@@ -20,20 +20,14 @@ const props = defineProps({
 const emit = defineEmits(['open'])
 
 function bestSrc(p) {
-  return (
-    p?.outputs?.md?.webp ||
-    p?.outputs?.md?.jpg ||
-    p?.outputs?.sm?.webp ||
-    p?.outputs?.sm?.jpg ||
-    ''
-  )
+  return p?.outputs?.md?.webp || p?.outputs?.sm?.webp || ''
 }
 function srcSet(p) {
   const o = p?.outputs || {}
   const parts = []
-  if (o.sm?.webp) parts.push(`${o.sm.webp} 512w`)
-  if (o.md?.webp) parts.push(`${o.md.webp} 1024w`)
-  if (o.lg?.webp) parts.push(`${o.lg.webp} 1600w`)
+  if (o.sm?.webp) parts.push(`${o.sm.webp} 320w`)
+  if (o.md?.webp) parts.push(`${o.md.webp} 640w`)
+  if (o.lg?.webp) parts.push(`${o.lg.webp} 1280w`)
   if (!parts.length) {
     if (o.sm?.jpg) parts.push(`${o.sm.jpg} 512w`)
     if (o.md?.jpg) parts.push(`${o.md.jpg} 1024w`)

@@ -20,9 +20,9 @@ const storage = admin.storage()
 const FieldValue = admin.firestore.FieldValue
 
 const SIZES = [
-  { key: 'sm', w: 512 },
-  { key: 'md', w: 1024 },
-  { key: 'lg', w: 1600 },
+  { key: 'sm', w: 320 },
+  { key: 'md', w: 640 },
+  { key: 'lg', w: 1280 },
 ]
 
 async function saveVariant(bucket, destPath, buf, contentType) {
@@ -126,32 +126,15 @@ exports.processPhoto = onObjectFinalized(
           .clone()
           .resize({ width: w, withoutEnlargement: true, fit: 'inside' })
 
-        // WebP first
-        const webpBuf = await base.clone().webp({ quality: 82 }).toBuffer()
         const destBase = `public/parks/${parkId}/photos/${photoId}/${key}`
+        const webpBuf = await base.clone().webp({ quality: 78 }).toBuffer()
         const webpUrl = await saveVariant(
           bucket,
           `${destBase}.webp`,
           webpBuf,
           'image/webp'
         )
-        // free ASAP
-        webpBuf.fill(0)
-
-        // then JPEG
-        const jpgBuf = await base
-          .clone()
-          .jpeg({ quality: 85, mozjpeg: true })
-          .toBuffer()
-        const jpgUrl = await saveVariant(
-          bucket,
-          `${destBase}.jpg`,
-          jpgBuf,
-          'image/jpeg'
-        )
-        jpgBuf.fill(0)
-
-        outputs[key] = { webp: webpUrl, jpg: jpgUrl }
+        outputs[key] = { webp: webpUrl }
       }
 
       try {
