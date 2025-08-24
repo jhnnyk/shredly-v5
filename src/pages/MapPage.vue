@@ -184,46 +184,43 @@ function placeUserMarker() {
     .addTo(map)
 }
 
-// Blue pin with skateboard
-function makeParkPin(isVisited = false) {
-  const el = document.createElement('div')
-  el.style.width = '32px' // was 30
-  el.style.height = '40px' // was 38
-  el.style.transform = 'translateY(-2px)'
-  el.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,.45))'
+const COLORS = {
+  open: { bg: '#5ea2ff' }, // blue
+  visited: { bg: '#24d87a' }, // green
+  closed: { bg: '#e74c3c' }, // red
+  construction: { bg: '#f1c40f' }, // yellow
+}
 
-  const PIN = '#5ea2ff' // slightly darker blue
+function pinSpec(status, isVisited) {
+  const s = (status || 'open').toLowerCase()
+  if (s === 'closed') return { key: 'closed', icon: 'close' }
+  if (s === 'construction') return { key: 'construction', icon: 'build' }
+  if (isVisited) return { key: 'visited', icon: 'check' }
+  return { key: 'open', icon: 'skateboarding' }
+}
 
-  el.innerHTML = `
-  <svg viewBox="0 0 24 24" width="32" height="40" aria-hidden="true">
-    <!-- solid pin, no border -->
-    <path d="M12 2c-3.86 0-7 3.14-7 7 0 4.9 5.2 10.9 6.57 12.4a.6.6 0 0 0 .86 0C13.8 19.9 19 13.9 19 9c0-3.86-3.14-7-7-7z"
-      fill="${PIN}"/>
+const PIN_PATH =
+  'M2 6V6.29266C2 7.72154 2.4863 9.10788 3.37892 10.2236L8 16L12.6211 10.2236C13.5137 9.10788 14 7.72154 14 6.29266V6C14 2.68629 11.3137 0 8 0C4.68629 0 2 2.68629 2 6Z'
 
-    <!-- wheels + deck (white) — scaled to keep same visual size as before -->
-    <g transform="translate(12,10) scale(0.245) translate(-33.5,-32.95)" fill="none">
-      <circle cx="20"  cy="41.9" r="3" fill="#fff"/>
-      <circle cx="47.3" cy="35.9" r="3" fill="#fff"/>
-      <path d="M55,24
-               c0,0 -3,4.8 -7,5.6
-               c0,0 -27.3,6  -31.3,6.9
-               c-3.9,0.9 -8.7,-2.2 -8.7,-2.2"
-            stroke="#fff" stroke-width="1.6" vector-effect="non-scaling-stroke"
-            stroke-linecap="round" stroke-linejoin="round"/>
-    </g>
+function makeParkPinSvg(isVisited = false, status = 'open', name = '') {
+  const { key, icon } = pinSpec(status, isVisited)
+  const c = COLORS[key]
 
-    ${
-      isVisited
-        ? `
-      <!-- green check badge -->
-      <g transform="translate(16,6)">
-        <circle cx="0" cy="0" r="4.6" fill="#24d87a" />
-        <path d="M -2 0 l 1.2 1.6 L 2.2 -1.2" fill="none" stroke="#0b321f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-      </g>`
-        : ''
-    }
-  </svg>`
-  return el
+  const root = document.createElement('div')
+  root.className = `pinx pinx--${key}`
+  root.setAttribute('role', 'img')
+  root.setAttribute('aria-label', name ? `${name} (${key})` : key)
+
+  root.innerHTML = `
+    <svg class="pinx-svg" viewBox="0 0 16 16" aria-hidden="true" preserveAspectRatio="xMidYMax meet" focusable="false">
+      <path class="pinx-shape" d="${PIN_PATH}"/>
+    </svg>
+    <span class="ms pinx-icon" aria-hidden="true">${icon}</span>
+  `
+
+  root.style.setProperty('--pin-bg', c.bg)
+
+  return root
 }
 
 function openPopupForPark(p) {
@@ -273,7 +270,11 @@ function drawParkMarkers() {
   parkMarkers = []
 
   for (const p of nearest.value) {
-    const el = makeParkPin(visited.value.has(p.id))
+    const el = makeParkPinSvg(
+      visited.value.has(p.id),
+      p.status || 'open',
+      p.name
+    )
     el.style.cursor = 'pointer'
 
     const mk = new maplibre.Marker({ element: el, anchor: 'bottom' })

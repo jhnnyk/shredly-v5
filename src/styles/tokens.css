@@ -297,3 +297,52 @@ select {
     font-size: 16px;
   }
 }
+
+/* --- SVG teardrop pins --- */
+.pinx {
+  position: relative;
+  width: 34px;
+  height: 46px;
+  pointer-events: auto;
+}
+.pinx-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
+}
+.pinx-shape {
+  fill: var(--pin-bg, #5ea2ff);
+  stroke: none; /* no border */
+}
+
+/* centered Material icon inside teardrop */
+.pinx-icon {
+  position: absolute;
+  left: 50%;
+  top: 55%;
+  transform: translate(-50%, -50%);
+  font-family: 'Material Symbols Rounded', sans-serif;
+  font-variation-settings: 'FILL' 0, 'wght' 650, 'GRAD' 0, 'opsz' 24;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--text);
+  user-select: none;
+  pointer-events: none;
+}
+
+.ms {
+  font-family: 'Material Symbols Rounded', 'Material Symbols Outlined',
+    sans-serif;
+  font-variation-settings: 'FILL' 0, 'wght' 600, 'GRAD' 0, 'opsz' 24;
+  font-size: 16px;
+  line-height: 1;
+  display: inline-block;
+}
+
+/* subtle hover lift on desktop */
+@media (hover: hover) {
+  .pinx:hover {
+    transform: translateY(-4px) scale(1.05);
+  }
+}
