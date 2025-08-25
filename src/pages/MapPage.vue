@@ -38,6 +38,7 @@
         :cover="p.cover"
         :visitorsCount="p.visitorsCount"
         :photosCount="p.photosCount"
+        :distanceKm="hasUserLoc ? p._d : null"
       />
     </div>
   </section>

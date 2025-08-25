@@ -30,6 +30,12 @@
         <div class="name">
           {{ name }}
         </div>
+
+        <span v-if="isNum(distanceKm)">
+          <i-material-symbols-near-me-rounded class="icon" aria-hidden="true" />
+          {{ distanceLabel }}
+        </span>
+
         <i-material-symbols-check-circle-outline-rounded
           v-if="visited"
           class="icon icon--visited"
@@ -45,6 +51,7 @@
           />
           {{ cityState }}
         </span>
+
         <span v-if="size">
           <i-material-symbols-square-foot class="icon" aria-hidden="true" />
           {{ Number(size).toLocaleString() }} sqft
@@ -86,6 +93,7 @@ const {
   cover = null,
   visitorsCount = undefined,
   photosCount = undefined,
+  distanceKm = undefined,
 } = defineProps({
   id: { type: String, required: false },
   name: String,
@@ -99,6 +107,7 @@ const {
   cover: { type: Object, default: null }, // { sm:{webp,jpg}, md:{...}, lg:{...} }
   visitorsCount: [Number, String],
   photosCount: [Number, String],
+  distanceKm: [Number, String],
 })
 
 const coverUrl = computed(() => {
@@ -112,6 +121,12 @@ const isNum = (v) => {
   const n = Number(v)
   return Number.isFinite(n)
 }
+const distanceLabel = computed(() => {
+  if (!isNum(distanceKm)) return ''
+  const mi = Number(distanceKm) * 0.621371
+  const val = mi < 10 ? mi.toFixed(1) : Math.round(mi).toString()
+  return `${val} mi`
+})
 </script>
 
 <style scoped>
@@ -149,6 +164,7 @@ const isNum = (v) => {
 .title-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
   min-height: 24px;
 }
