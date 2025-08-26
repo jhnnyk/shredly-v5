@@ -27,15 +27,14 @@
 
     <div class="body">
       <div class="title-row">
-        <div class="name">
-          {{ name }}
+        <div class="title-left">
+          <div class="name">
+            {{ name }}
+          </div>
+          <span v-if="isNum(distanceKm)" class="distance">
+            {{ distanceLabel }}
+          </span>
         </div>
-
-        <span v-if="isNum(distanceKm)">
-          <i-material-symbols-near-me-rounded class="icon" aria-hidden="true" />
-          {{ distanceLabel }}
-        </span>
-
         <i-material-symbols-check-circle-outline-rounded
           v-if="visited"
           class="icon icon--visited"
@@ -161,26 +160,49 @@ const distanceLabel = computed(() => {
   display: grid;
   gap: 6px;
 }
+
 .title-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
   min-height: 24px;
+  min-width: 0;
 }
+
+.title-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0; /* required for ellipsis */
+  overflow: hidden;
+  white-space: nowrap;
+}
+
 .name {
   font-family: 'Sedgwick Ave Display', cursive;
   font-size: 20px;
-  letter-spacing: 0.2px;
   line-height: 1.1;
-  flex: 1;
+  flex: 0 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.distance {
+  font-family: 'Karla', system-ui, -apple-system, Segoe UI, Roboto, Helvetica,
+    Arial;
+  color: var(--accent);
+  font-weight: bold;
+  font-size: 16px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .icon--visited {
   color: #24d87a;
+  flex: 0 0 auto;
 }
 
 /* --- overlay mode when cover exists --- */
