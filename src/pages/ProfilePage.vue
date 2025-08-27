@@ -67,16 +67,19 @@
           <div class="text-muted">
             Log in to track your visited parks and add photos.
           </div>
-          <div class="mt-16">
-            <button class="btn btn-primary" @click="showAuth = true">
-              Log in or sign up
+          <div class="mt-16" style="display: flex; gap: 8px; flex-wrap: wrap">
+            <button class="btn btn-primary" @click="openAuth('login')">
+              Log in
+            </button>
+            <button class="btn btn-ghost" @click="openAuth('signup')">
+              Sign up
             </button>
           </div>
         </div>
       </div>
     </div>
 
-    <AuthModal v-if="showAuth" @close="showAuth = false" />
+    <AuthModal v-if="showAuth" :mode="authMode" @close="showAuth = false" />
   </section>
 </template>
 
@@ -102,9 +105,25 @@ const route = useRoute()
 const auth = useAuthStore()
 const parks = useParksStore()
 const showAuth = ref(false)
+const authMode = ref('login')
 
 const visitedCount = computed(() => parks.visited.length)
 const photoCount = computed(() => auth.profile?.photoCount || 0)
+
+function openAuth(mode = 'login') {
+  authMode.value = mode
+  showAuth.value = true
+}
+
+// auto-close the modal when the user becomes authenticated
+watch(
+  () => auth.user,
+  (u) => {
+    if (u && showAuth.value) {
+      showAuth.value = false
+    }
+  }
+)
 
 // whose profile are we showing?
 const viewingUid = computed(() =>
@@ -151,9 +170,4 @@ watch(viewingUid, async (uid) => {
   await loadUser(uid)
   unsubPhotos = watchPhotos(uid)
 })
-
-// expose logout if you already have it
-// function logout() {
-//   auth.logout?.()
-// }
 </script>
