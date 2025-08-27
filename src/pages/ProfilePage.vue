@@ -64,9 +64,7 @@
         </div>
 
         <div v-else>
-          <div class="text-muted">
-            Log in to track your visited parks and add photos.
-          </div>
+          <div>Log in to track your visited parks and add photos.</div>
           <div class="mt-16" style="display: flex; gap: 8px; flex-wrap: wrap">
             <button class="btn btn-primary" @click="openAuth('login')">
               Log in
@@ -97,17 +95,14 @@ import {
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useAuthStore } from '../store/authStore'
-import { useParksStore } from '../store/parksStore'
 import PhotoGrid from '../components/PhotoGrid.vue'
 import AuthModal from '../components/AuthModal.vue'
 
 const route = useRoute()
 const auth = useAuthStore()
-const parks = useParksStore()
 const showAuth = ref(false)
 const authMode = ref('login')
 
-// const visitedCount = computed(() => parks.visited.length)
 const photoCount = computed(() => auth.profile?.photoCount || 0)
 
 function openAuth(mode = 'login') {
