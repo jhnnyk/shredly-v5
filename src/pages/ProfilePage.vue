@@ -28,7 +28,7 @@
             <div class="card p-16">
               <div class="text-muted">Photos added</div>
               <div style="font-size: 28px; font-weight: 700">
-                {{ photoCount }}
+                {{ photos.length }}
               </div>
             </div>
           </div>
@@ -102,8 +102,6 @@ const route = useRoute()
 const auth = useAuthStore()
 const showAuth = ref(false)
 const authMode = ref('login')
-
-const photoCount = computed(() => auth.profile?.photoCount || 0)
 
 function openAuth(mode = 'login') {
   authMode.value = mode
