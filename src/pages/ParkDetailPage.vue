@@ -24,7 +24,7 @@
 
     <!-- keep actions BELOW the hero for a cleaner overlay -->
     <div class="actions">
-      <button class="btn" @click="toggleVisited">
+      <button class="btn" @click="onMarkVisited">
         {{ visited ? 'Visited ✓' : 'Mark visited' }}
       </button>
       <RouterLink class="btn" to="/map">Map</RouterLink>
@@ -57,15 +57,20 @@
         <div class="section-title">Add a photo</div>
         <div class="uploader">
           <input
+            ref="fileInputRef"
             id="fileInput"
             type="file"
             accept="image/*,.heic,.heif"
             multiple
             @change="onFiles"
           />
-          <label for="fileInput" class="btn btn-primary">{{
-            uploading ? 'Uploading…' : 'Choose photos'
-          }}</label>
+          <label
+            for="fileInput"
+            class="btn btn-primary"
+            @click.prevent="onChoosePhotosClick"
+          >
+            {{ uploading ? 'Uploading…' : 'Choose photos' }}
+          </label>
           <div class="hint">
             JPEG/PNG/WEBP/HEIC supported. Up to ~20MB each.
           </div>
@@ -111,7 +116,7 @@ import {
 } from 'firebase/firestore'
 import { ref as sRef, uploadBytesResumable } from 'firebase/storage'
 import { db, storage } from '../lib/firebase'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useParksStore } from '../store/parksStore'
 import { useAuthStore } from '../store/authStore'
 import { useVisitedStore } from '../store/visitedStore'
@@ -119,6 +124,7 @@ import PhotoGrid from '../components/PhotoGrid.vue'
 import PhotoLightbox from '../components/PhotoLightbox.vue'
 
 const route = useRoute()
+const router = useRouter()
 const store = useParksStore()
 const auth = useAuthStore()
 const vstore = useVisitedStore()
@@ -129,6 +135,7 @@ const photos = ref([])
 const uploading = ref(false)
 const showLB = ref(false)
 const lbIndex = ref(0)
+const fileInputRef = ref(null)
 
 onMounted(async () => {
   park.value = await store.loadOne(String(id))
@@ -167,9 +174,20 @@ const heroUrl = computed(() => {
   )
 })
 
+const goToAuth = () => {
+  router.push('/profile')
+}
+
 const visited = computed(() => vstore.isVisited(String(id)))
-function toggleVisited() {
+
+const onMarkVisited = () => {
+  if (!auth.user) return goToAuth()
   vstore.toggle(String(id))
+}
+
+const onChoosePhotosClick = (e) => {
+  if (!auth.user) return goToAuth()
+  fileInputRef.value?.click()
 }
 
 const isAdmin = computed(() => !!auth?.isAdmin)
@@ -187,7 +205,7 @@ const statusBadge = computed(() => {
 async function onFiles(e) {
   const files = Array.from(e.target.files || [])
   if (!auth?.user) {
-    alert('Please sign in to upload photos')
+    goToAuth()
     return
   }
   if (!files.length) return
