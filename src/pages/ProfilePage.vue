@@ -84,7 +84,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   doc,
@@ -107,7 +107,7 @@ const parks = useParksStore()
 const showAuth = ref(false)
 const authMode = ref('login')
 
-const visitedCount = computed(() => parks.visited.length)
+// const visitedCount = computed(() => parks.visited.length)
 const photoCount = computed(() => auth.profile?.photoCount || 0)
 
 function openAuth(mode = 'login') {
@@ -164,10 +164,50 @@ onMounted(async () => {
   await loadUser(viewingUid.value)
   unsubPhotos = watchPhotos(viewingUid.value)
 })
+
 watch(viewingUid, async (uid) => {
-  unsubPhotos && unsubPhotos()
-  unsubPhotos = null
+  resetProfileState()
+  if (!uid) return
   await loadUser(uid)
   unsubPhotos = watchPhotos(uid)
+})
+
+// reset helper
+function resetProfileState() {
+  userData.value = { displayName: '' }
+  photos.value = []
+  if (unsubPhotos) {
+    unsubPhotos()
+    unsubPhotos = null
+  }
+}
+
+// when auth.user changes, react accordingly
+watch(
+  () => auth.user,
+  async (u) => {
+    if (!u) {
+      // logged out → clear stale data
+      resetProfileState()
+      // if you're on /profile (no :uid), stay and show login prompt
+      // if you're viewing someone else via :uid, load that user's data
+      if (route.params.uid) {
+        await loadUser(String(route.params.uid))
+        unsubPhotos = watchPhotos(String(route.params.uid))
+      }
+      return
+    }
+    // logged in → if viewing self (no :uid), load current user
+    if (!route.params.uid) {
+      await loadUser(u.uid)
+      unsubPhotos = watchPhotos(u.uid)
+    }
+  },
+  { immediate: false }
+)
+
+// tidy up on unmount
+onBeforeUnmount(() => {
+  if (unsubPhotos) unsubPhotos()
 })
 </script>
