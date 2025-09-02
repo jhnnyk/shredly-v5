@@ -18,7 +18,7 @@
         <input
           class="input"
           v-model="displayName"
-          placeholder="e.g., John K."
+          placeholder="e.g., shredder45"
           autocomplete="nickname"
           required
         />
