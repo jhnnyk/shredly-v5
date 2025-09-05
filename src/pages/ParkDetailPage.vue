@@ -22,12 +22,42 @@
       </div>
     </div>
 
-    <!-- keep actions BELOW the hero for a cleaner overlay -->
-    <div class="actions">
+    <div class="card p-12">
+      <ul class="facts">
+        <li v-if="park?.sizeSqft">
+          📏 {{ Number(park.sizeSqft).toLocaleString() }} sqft
+        </li>
+        <li v-if="park?.builder">🏗️ {{ park.builder }}</li>
+        <li v-if="park?.openedYear">📅 Opened {{ park.openedYear }}</li>
+        <li v-if="park?.hours">🕒 {{ park.hours }}</li>
+      </ul>
+      <div class="chips" v-if="park?.tags?.length">
+        <span class="tag" v-for="t in park.tags" :key="t">{{ t }}</span>
+      </div>
+
       <button class="btn" @click="onMarkVisited">
         {{ visited ? 'Visited ✓' : 'Mark visited' }}
       </button>
-      <RouterLink class="btn" to="/map">Map</RouterLink>
+
+      <div class="uploader">
+        <input
+          ref="fileInputRef"
+          id="fileInput"
+          type="file"
+          accept="image/*,.heic,.heif"
+          multiple
+          @change="onFiles"
+        />
+        <label
+          for="fileInput"
+          class="btn btn-primary"
+          @click.prevent="onChoosePhotosClick"
+        >
+          {{ uploading ? 'Uploading…' : 'Add Photo' }}
+        </label>
+        <div class="hint">JPEG/PNG/WEBP/HEIC supported. Up to ~20MB each.</div>
+      </div>
+
       <RouterLink
         v-if="isAdmin"
         class="btn btn-primary"
@@ -36,70 +66,64 @@
       >
     </div>
 
-    <div class="grid2">
-      <div class="card p-12">
-        <div class="section-title">Details</div>
-        <ul class="facts">
-          <li v-if="park?.sizeSqft">
-            📏 {{ Number(park.sizeSqft).toLocaleString() }} sqft
-          </li>
-          <li v-if="park?.builder">🏗️ {{ park.builder }}</li>
-          <li v-if="park?.openedYear">📅 Opened {{ park.openedYear }}</li>
-          <li v-if="park?.hours">🕒 {{ park.hours }}</li>
-          <li v-if="park?.address">📍 {{ park.address }}</li>
-        </ul>
-        <div class="chips" v-if="park?.tags?.length">
-          <span class="tag" v-for="t in park.tags" :key="t">{{ t }}</span>
-        </div>
-      </div>
+    <h3>Details</h3>
+    <p class="address" v-if="park?.address">
+      {{ park.address }}<br />
+      <span v-if="park?.city"> {{ park.city }},&nbsp; </span>
+      <span v-if="park?.state"> {{ park.state }}&nbsp; </span>
+      <span v-if="park?.zip">{{ park.zip }}</span
+      ><br />
 
-      <div class="card p-12">
-        <div class="section-title">Add a photo</div>
-        <div class="uploader">
-          <input
-            ref="fileInputRef"
-            id="fileInput"
-            type="file"
-            accept="image/*,.heic,.heif"
-            multiple
-            @change="onFiles"
+      <span v-if="park?.lat && park?.lng" class="map-links">
+        <a
+          :href="`https://www.google.com/maps/search/?api=1&query=${park.lat},${park.lng}`"
+          target="_blank"
+          rel="noopener"
+          class="map-link"
+        >
+          <i-material-symbols-location-on-outline-rounded
+            class="icon"
+            aria-hidden="true"
           />
-          <label
-            for="fileInput"
-            class="btn btn-primary"
-            @click.prevent="onChoosePhotosClick"
-          >
-            {{ uploading ? 'Uploading…' : 'Choose photos' }}
-          </label>
-          <div class="hint">
-            JPEG/PNG/WEBP/HEIC supported. Up to ~20MB each.
-          </div>
-        </div>
-      </div>
+          Google Maps
+        </a>
+        <a
+          :href="`https://maps.apple.com/?ll=${park.lat},${
+            park.lng
+          }&q=${encodeURIComponent(park.name || 'Skatepark')}`"
+          target="_blank"
+          rel="noopener"
+          class="map-link"
+        >
+          <i-material-symbols-location-on-outline-rounded
+            class="icon"
+            aria-hidden="true"
+          />
+          Apple Maps
+        </a>
+      </span>
+    </p>
 
-      <div class="card p-16">
-        <div class="section-title">Photos</div>
-        <PhotoGrid
-          v-if="photos.length"
-          :photos="photos"
-          :localPreview="localPreview"
-          :uploadProgress="uploadProgress"
-          :showCredit="true"
-          credit-type="user"
-          @open="openLB"
-        />
+    <h3>Photos</h3>
+    <PhotoGrid
+      v-if="photos.length"
+      :photos="photos"
+      :localPreview="localPreview"
+      :uploadProgress="uploadProgress"
+      :showCredit="true"
+      credit-type="user"
+      @open="openLB"
+    />
 
-        <div v-else class="muted">No photos yet.</div>
+    <div v-else class="muted">No photos yet.</div>
 
-        <!-- Lightbox -->
-        <PhotoLightbox
-          v-model:show="showLB"
-          :photos="viewablePhotos"
-          :startIndex="lbIndex"
-          :localPreview="localPreview"
-        />
-      </div>
-    </div>
+    <!-- Lightbox -->
+    <PhotoLightbox
+      v-model:show="showLB"
+      :photos="viewablePhotos"
+      :startIndex="lbIndex"
+      :localPreview="localPreview"
+    />
   </section>
 </template>
 
@@ -393,7 +417,6 @@ function openLB(idOrIndex) {
   font-size: clamp(12px, 3.4vw, 14px);
   display: flex;
   align-items: center;
-  gap: 8px;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
 }
 
