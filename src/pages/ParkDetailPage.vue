@@ -25,12 +25,51 @@
     <div class="card p-12">
       <ul class="facts">
         <li v-if="park?.sizeSqft">
-          📏 {{ Number(park.sizeSqft).toLocaleString() }} sqft
+          <i-material-symbols-square-foot class="icon" aria-hidden="true" />
+          {{ Number(park.sizeSqft).toLocaleString() }} sqft
         </li>
-        <li v-if="park?.builder">🏗️ {{ park.builder }}</li>
-        <li v-if="park?.openedYear">📅 Opened {{ park.openedYear }}</li>
-        <li v-if="park?.hours">🕒 {{ park.hours }}</li>
+
+        <li>
+          <i-material-symbols-group-outline-rounded
+            class="icon"
+            aria-hidden="true"
+          />
+          {{ park?.visitorsCount || 0 }}
+        </li>
+
+        <li>
+          <i-material-symbols-photo-camera-outline-rounded
+            class="icon"
+            aria-hidden="true"
+          />
+          {{ park?.photosCount || 0 }}
+        </li>
+
+        <li v-if="park?.builder">
+          <i-material-symbols-build-outline-rounded
+            class="icon"
+            aria-hidden="true"
+          />
+          {{ park.builder }}
+        </li>
+
+        <li v-if="park?.openedYear">
+          <i-material-symbols-calendar-month-outline-rounded
+            class="icon"
+            aria-hidden="true"
+          />
+          Opened {{ park.openedYear }}
+        </li>
+
+        <li v-if="park?.hours">
+          <i-material-symbols-schedule-outline-rounded
+            class="icon"
+            aria-hidden="true"
+          />
+          {{ park.hours }}
+        </li>
       </ul>
+
       <div class="chips" v-if="park?.tags?.length">
         <span class="tag" v-for="t in park.tags" :key="t">{{ t }}</span>
       </div>
@@ -66,7 +105,7 @@
       >
     </div>
 
-    <h3>Details</h3>
+    <h3>Location</h3>
     <p class="address" v-if="park?.address">
       {{ park.address }}<br />
       <span v-if="park?.city"> {{ park.city }},&nbsp; </span>
@@ -103,6 +142,19 @@
         </a>
       </span>
     </p>
+    <!-- 
+    <h3>Stats</h3>
+    <span v-if="size"> {{ Number(size).toLocaleString() }} sqft </span>
+
+    <span v-if="isNum(visitorsCount)">
+      
+      {{ Number(visitorsCount).toLocaleString() }}
+    </span>
+
+    <span v-if="isNum(photosCount)">
+      
+      {{ Number(photosCount).toLocaleString() }}
+    </span> -->
 
     <h3>Photos</h3>
     <PhotoGrid
