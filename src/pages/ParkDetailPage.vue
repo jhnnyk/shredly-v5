@@ -48,41 +48,39 @@
           {{ park.hours }}
         </li>
       </ul>
+      <div class="actions">
+        <button class="btn" @click="onMarkVisited">
+          {{ visited ? 'Visited ✓' : 'Mark visited' }}
+        </button>
 
-      <div class="chips" v-if="park?.tags?.length">
-        <span class="tag" v-for="t in park.tags" :key="t">{{ t }}</span>
-      </div>
+        <div class="uploader">
+          <input
+            ref="fileInputRef"
+            id="fileInput"
+            type="file"
+            accept="image/*,.heic,.heif"
+            multiple
+            @change="onFiles"
+          />
+          <label
+            for="fileInput"
+            class="btn btn-primary"
+            @click.prevent="onChoosePhotosClick"
+          >
+            {{ uploading ? 'Uploading…' : 'Add Photo' }}
+          </label>
+          <p class="hint">JPEG/PNG/WEBP/HEIC supported. Up to ~20MB each.</p>
+        </div>
 
-      <button class="btn" @click="onMarkVisited">
-        {{ visited ? 'Visited ✓' : 'Mark visited' }}
-      </button>
-
-      <div class="uploader">
-        <input
-          ref="fileInputRef"
-          id="fileInput"
-          type="file"
-          accept="image/*,.heic,.heif"
-          multiple
-          @change="onFiles"
-        />
-        <label
-          for="fileInput"
+        <RouterLink
+          v-if="isAdmin"
           class="btn btn-primary"
-          @click.prevent="onChoosePhotosClick"
+          :to="`/admin/parks/${id}`"
+          >Edit</RouterLink
         >
-          {{ uploading ? 'Uploading…' : 'Add Photo' }}
-        </label>
-        <div class="hint">JPEG/PNG/WEBP/HEIC supported. Up to ~20MB each.</div>
       </div>
-
-      <RouterLink
-        v-if="isAdmin"
-        class="btn btn-primary"
-        :to="`/admin/parks/${id}`"
-        >Edit</RouterLink
-      >
     </div>
+
     <div class="details">
       <div class="location">
         <h3>Location</h3>
@@ -146,6 +144,10 @@
             Opened {{ park.openedYear }}
           </li>
         </ul>
+
+        <div class="chips" v-if="park?.tags?.length">
+          <span class="tag" v-for="t in park.tags" :key="t">{{ t }}</span>
+        </div>
       </div>
     </div>
 
@@ -450,7 +452,7 @@ function openLB(idOrIndex) {
   margin: 0;
   font-family: 'Sedgwick Ave Display', cursive;
   font-size: clamp(22px, 5.2vw, 34px);
-  letter-spacing: 0.2px;
+  letter-spacing: 1px;
   line-height: 1.05;
   color: var(--text);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
@@ -458,19 +460,10 @@ function openLB(idOrIndex) {
 
 .tagline {
   margin: 0.25rem 0 0;
-  color: var(--text-2);
   font-size: clamp(12px, 3.4vw, 14px);
   display: flex;
   align-items: center;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
-}
-
-.actions {
-  margin-top: 12px;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 0 4px; /* aligns with your content nicely */
 }
 
 .stamp {
@@ -488,25 +481,17 @@ function openLB(idOrIndex) {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   z-index: 3;
 }
+
 .stamp.closed {
   color: #ff99b1;
   background: rgba(59, 17, 29, 0.45);
   border: 2px solid #6b1a2a;
 }
+
 .stamp.construction {
   color: #ffef9a;
   background: rgba(44, 42, 20, 0.45);
   border: 2px solid #5a5520;
-}
-
-.grid2 {
-  display: grid;
-  gap: 16px;
-}
-@media (min-width: 800px) {
-  .grid2 {
-    grid-template-columns: 1fr 1fr;
-  }
 }
 
 .facts {
@@ -523,6 +508,7 @@ function openLB(idOrIndex) {
 .details {
   display: flex;
   flex-wrap: wrap;
+  row-gap: 20px;
 }
 
 .location,
@@ -537,17 +523,40 @@ function openLB(idOrIndex) {
   flex-wrap: wrap;
 }
 
+.actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 0 4px; /* aligns with your content nicely */
+}
+
+.actions button,
+.actions .uploader,
+.actions a {
+  flex: 1;
+  width: 100%;
+}
+
 .uploader {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
 }
+
 .uploader input[type='file'] {
   display: none;
 }
+
 .uploader .hint {
-  color: var(--text-2);
   font-size: 12px;
+  margin: 0;
+}
+
+.actions button.btn,
+.actions a.btn {
+  height: 100%;
 }
 
 @media (max-width: 700px) {

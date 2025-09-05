@@ -188,6 +188,8 @@ const distanceLabel = computed(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--text);
+  letter-spacing: 1px;
 }
 
 .distance {
