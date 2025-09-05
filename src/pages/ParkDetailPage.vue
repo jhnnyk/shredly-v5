@@ -24,11 +24,6 @@
 
     <div class="card p-12">
       <ul class="facts">
-        <li v-if="park?.sizeSqft">
-          <i-material-symbols-square-foot class="icon" aria-hidden="true" />
-          {{ Number(park.sizeSqft).toLocaleString() }} sqft
-        </li>
-
         <li>
           <i-material-symbols-group-outline-rounded
             class="icon"
@@ -43,22 +38,6 @@
             aria-hidden="true"
           />
           {{ park?.photosCount || 0 }}
-        </li>
-
-        <li v-if="park?.builder">
-          <i-material-symbols-build-outline-rounded
-            class="icon"
-            aria-hidden="true"
-          />
-          {{ park.builder }}
-        </li>
-
-        <li v-if="park?.openedYear">
-          <i-material-symbols-calendar-month-outline-rounded
-            class="icon"
-            aria-hidden="true"
-          />
-          Opened {{ park.openedYear }}
         </li>
 
         <li v-if="park?.hours">
@@ -104,59 +83,73 @@
         >Edit</RouterLink
       >
     </div>
+    <div class="details">
+      <div class="location">
+        <h3>Location</h3>
+        <p class="address" v-if="park?.address">
+          {{ park.address }}<br />
+          <span v-if="park?.city"> {{ park.city }},&nbsp; </span>
+          <span v-if="park?.state"> {{ park.state }}&nbsp; </span>
+          <span v-if="park?.zip">{{ park.zip }}</span
+          ><br />
 
-    <h3>Location</h3>
-    <p class="address" v-if="park?.address">
-      {{ park.address }}<br />
-      <span v-if="park?.city"> {{ park.city }},&nbsp; </span>
-      <span v-if="park?.state"> {{ park.state }}&nbsp; </span>
-      <span v-if="park?.zip">{{ park.zip }}</span
-      ><br />
+          <span v-if="park?.lat && park?.lng" class="map-links">
+            <a
+              :href="`https://www.google.com/maps/search/?api=1&query=${park.lat},${park.lng}`"
+              target="_blank"
+              rel="noopener"
+              class="map-link"
+            >
+              <i-material-symbols-location-on-outline-rounded
+                class="icon"
+                aria-hidden="true"
+              />
+              Google Maps
+            </a>
+            <a
+              :href="`https://maps.apple.com/?ll=${park.lat},${
+                park.lng
+              }&q=${encodeURIComponent(park.name || 'Skatepark')}`"
+              target="_blank"
+              rel="noopener"
+              class="map-link"
+            >
+              <i-material-symbols-location-on-outline-rounded
+                class="icon"
+                aria-hidden="true"
+              />
+              Apple Maps
+            </a>
+          </span>
+        </p>
+      </div>
+      <div class="stats">
+        <h3>Stats</h3>
+        <ul class="facts">
+          <li v-if="park?.sizeSqft">
+            <i-material-symbols-square-foot class="icon" aria-hidden="true" />
+            {{ Number(park.sizeSqft).toLocaleString() }} sqft
+          </li>
+          <li v-if="park?.builder">
+            <i-material-symbols-build-outline-rounded
+              class="icon"
+              aria-hidden="true"
+            />
+            {{ park.builder }}
+          </li>
 
-      <span v-if="park?.lat && park?.lng" class="map-links">
-        <a
-          :href="`https://www.google.com/maps/search/?api=1&query=${park.lat},${park.lng}`"
-          target="_blank"
-          rel="noopener"
-          class="map-link"
-        >
-          <i-material-symbols-location-on-outline-rounded
-            class="icon"
-            aria-hidden="true"
-          />
-          Google Maps
-        </a>
-        <a
-          :href="`https://maps.apple.com/?ll=${park.lat},${
-            park.lng
-          }&q=${encodeURIComponent(park.name || 'Skatepark')}`"
-          target="_blank"
-          rel="noopener"
-          class="map-link"
-        >
-          <i-material-symbols-location-on-outline-rounded
-            class="icon"
-            aria-hidden="true"
-          />
-          Apple Maps
-        </a>
-      </span>
-    </p>
-    <!-- 
-    <h3>Stats</h3>
-    <span v-if="size"> {{ Number(size).toLocaleString() }} sqft </span>
+          <li v-if="park?.openedYear">
+            <i-material-symbols-calendar-month-outline-rounded
+              class="icon"
+              aria-hidden="true"
+            />
+            Opened {{ park.openedYear }}
+          </li>
+        </ul>
+      </div>
+    </div>
 
-    <span v-if="isNum(visitorsCount)">
-      
-      {{ Number(visitorsCount).toLocaleString() }}
-    </span>
-
-    <span v-if="isNum(photosCount)">
-      
-      {{ Number(photosCount).toLocaleString() }}
-    </span> -->
-
-    <h3>Photos</h3>
+    <h3>Recent Photos</h3>
     <PhotoGrid
       v-if="photos.length"
       :photos="photos"
@@ -521,11 +514,23 @@ function openLB(idOrIndex) {
   padding: 0;
   margin: 6px 0;
   display: flex;
-  gap: 12px;
+  gap: 10px;
+  justify-content: space-between;
   flex-wrap: wrap;
-  color: var(--text-2);
   font-size: 13px;
 }
+
+.details {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.location,
+.stats {
+  flex: 1;
+  min-width: 220px;
+}
+
 .chips {
   display: flex;
   gap: 6px;

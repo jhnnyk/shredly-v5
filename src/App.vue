@@ -12,5 +12,7 @@ import BottomNav from './components/BottomNav.vue'
 </script>
 
 <style>
-.app { min-height: 100vh; color: var(--text); }
+.app {
+  min-height: 100vh;
+}
 </style>
