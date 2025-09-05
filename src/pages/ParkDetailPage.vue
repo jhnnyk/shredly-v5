@@ -139,6 +139,10 @@ const fileInputRef = ref(null)
 
 onMounted(async () => {
   park.value = await store.loadOne(String(id))
+  // set page title
+  if (park.value?.name) {
+    document.title = `${park.value.name} – Shredly`
+  }
   // live stream of this park's photos (newest first)
   const q = query(
     collection(db, 'photos'),
