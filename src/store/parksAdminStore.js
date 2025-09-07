@@ -28,6 +28,22 @@ function sanitizeStatus(s) {
   return ['open', 'closed', 'construction'].includes(v) ? v : 'open'
 }
 
+async function generateUniqueParkId(name, state) {
+  const baseId = [slugify(name), slugify(state)].filter(Boolean).join('-')
+  if (!baseId) return null
+
+  let candidate = baseId
+  let i = 1
+
+  while (true) {
+    const ref = doc(db, 'parks', candidate)
+    const snap = await getDoc(ref)
+    if (!snap.exists()) return candidate
+    i++
+    candidate = `${baseId}-${i}`
+  }
+}
+
 export const useAdminParksStore = defineStore('parksAdmin', {
   state: () => ({
     parks: [],
@@ -46,8 +62,10 @@ export const useAdminParksStore = defineStore('parksAdmin', {
       return snap.exists() ? { id: snap.id, ...snap.data() } : null
     },
     async createPark(data) {
-      const id = slugify(data.name || '') || undefined
-      const ref = id ? doc(db, 'parks', id) : doc(collection(db, 'parks'))
+      const id = await generateUniqueParkId(data.name, data.state)
+      if (!id) throw new Error('Invalid park name/state')
+
+      const ref = doc(db, 'parks', id)
       const payload = {
         name: data.name || '',
         address: data.address || '',
