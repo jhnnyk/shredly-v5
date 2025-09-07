@@ -1,7 +1,7 @@
 <template>
   <section>
     <h1>Shredly</h1>
-    <p>{{ parks.length }} skateparks and counting... Gotta shred 'em all!</p>
+    <p>{{ parks.length }} skateparks... Gotta shred 'em all!</p>
 
     <div class="search grid" style="grid-template-columns: 1fr auto; gap: 10px">
       <input
