@@ -50,7 +50,17 @@
       </ul>
       <div class="actions">
         <button class="btn" @click="onMarkVisited">
-          {{ visited ? 'Visited ✓' : 'Mark visited' }}
+          <i-material-symbols-check
+            v-if="visited"
+            class="icon"
+            aria-hidden="true"
+          />
+          <i-material-symbols-check-box-outline-blank
+            v-else
+            class="icon"
+            aria-hidden="true"
+          />
+          {{ visited ? 'Visited' : 'Mark visited' }}
         </button>
 
         <div class="uploader">
@@ -67,6 +77,10 @@
             class="btn btn-primary"
             @click.prevent="onChoosePhotosClick"
           >
+            <i-material-symbols-photo-camera-outline-rounded
+              class="icon"
+              aria-hidden="true"
+            />
             {{ uploading ? 'Uploading…' : 'Add Photo' }}
           </label>
           <p class="hint">JPEG/PNG/WEBP/HEIC supported. Up to ~20MB each.</p>
@@ -79,7 +93,6 @@
           >Edit</RouterLink
         >
       </div>
-      
     </div>
 
     <div class="details">
@@ -496,8 +509,20 @@ function openLB(idOrIndex) {
   flex: 1;
   width: 100%;
 }
+/* spacing for icons inside buttons */
+.actions .btn .icon {
+  margin-right: 8px;
+  font-size: 18px;
+  color: var(--accent);
+}
+
+.actions .btn-primary .icon {
+  color: var(--text);
+}
 /* full width, natural height */
-.actions .btn { width: 100%; }
+.actions .btn {
+  width: 100%;
+}
 
 .uploader {
   display: flex;
