@@ -84,6 +84,7 @@ select {
 
 .btn {
   appearance: none;
+  box-sizing: border-box;
   border: 2px solid var(--accent);
   border-radius: var(--radius-lg);
   padding: 12px 15px;

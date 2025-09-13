@@ -79,6 +79,7 @@
           >Edit</RouterLink
         >
       </div>
+      
     </div>
 
     <div class="details">
@@ -486,6 +487,7 @@ function openLB(idOrIndex) {
   gap: 8px;
   flex-wrap: wrap;
   padding: 0 4px; /* aligns with your content nicely */
+  align-items: flex-start; /* keep natural button height */
 }
 
 .actions button,
@@ -494,12 +496,14 @@ function openLB(idOrIndex) {
   flex: 1;
   width: 100%;
 }
+/* full width, natural height */
+.actions .btn { width: 100%; }
 
 .uploader {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
 }
 
 .uploader input[type='file'] {
@@ -512,9 +516,12 @@ function openLB(idOrIndex) {
 }
 
 .actions button.btn,
-.actions a.btn {
-  height: 100%;
+.actions a.btn,
+.actions label.btn {
+  height: auto;
 }
+
+/* upload hint now lives inside .uploader */
 
 /* photos grid handled by PhotoGrid.vue */
 </style>
