@@ -52,12 +52,12 @@
         <button class="btn" @click="onMarkVisited">
           <i-material-symbols-check
             v-if="visited"
-            class="icon"
+            class="icon ms"
             aria-hidden="true"
           />
           <i-material-symbols-check-box-outline-blank
             v-else
-            class="icon"
+            class="icon ms"
             aria-hidden="true"
           />
           {{ visited ? 'Visited' : 'Mark visited' }}
@@ -78,7 +78,7 @@
             @click.prevent="onChoosePhotosClick"
           >
             <i-material-symbols-photo-camera-outline-rounded
-              class="icon"
+              class="icon ms"
               aria-hidden="true"
             />
             {{ uploading ? 'Uploading…' : 'Add Photo' }}
@@ -98,13 +98,14 @@
     <div class="details">
       <div class="location">
         <h3>Location</h3>
-        <p class="address" v-if="park?.address">
+        <p v-if="park?.address">
           {{ park.address }}<br />
           <span v-if="park?.city"> {{ park.city }},&nbsp; </span>
           <span v-if="park?.state"> {{ park.state }}&nbsp; </span>
           <span v-if="park?.zip">{{ park.zip }}</span
           ><br />
-
+        </p>
+        <p>
           <span v-if="park?.lat && park?.lng" class="map-links">
             <a
               :href="`https://www.google.com/maps/search/?api=1&query=${park.lat},${park.lng}`"
@@ -476,6 +477,11 @@ function openLB(idOrIndex) {
   font-size: 13px;
 }
 
+.location p {
+  margin: 6px 0;
+  line-height: 1.3em;
+}
+
 .details {
   display: flex;
   flex-wrap: wrap;
@@ -545,8 +551,4 @@ function openLB(idOrIndex) {
 .actions label.btn {
   height: auto;
 }
-
-/* upload hint now lives inside .uploader */
-
-/* photos grid handled by PhotoGrid.vue */
 </style>
