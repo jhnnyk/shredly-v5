@@ -482,6 +482,10 @@ function openLB(idOrIndex) {
   line-height: 1.3em;
 }
 
+.map-links a {
+  margin-right: 15px;
+}
+
 .details {
   display: flex;
   flex-wrap: wrap;
@@ -515,16 +519,7 @@ function openLB(idOrIndex) {
   flex: 1;
   width: 100%;
 }
-/* spacing for icons inside buttons */
-.actions .btn .icon {
-  margin-right: 8px;
-  font-size: 18px;
-  color: var(--accent);
-}
-
-.actions .btn-primary .icon {
-  color: var(--text);
-}
+/* icon spacing/color standardized in tokens.css */
 /* full width, natural height */
 .actions .btn {
   width: 100%;
