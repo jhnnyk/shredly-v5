@@ -2,7 +2,6 @@ import { defineStore } from 'pinia'
 import { db } from '../lib/firebase'
 import {
   collection,
-  onSnapshot,
   orderBy,
   query,
   getDocs,
@@ -59,23 +58,43 @@ export const useParksStore = defineStore('parks', {
       else this.visited.push(id)
       localStorage.setItem('visitedParks', JSON.stringify(this.visited))
     },
-    start() {
-      if (this.unsub) return
+    async start() {
+      // Cache-first one-time fetch with TTL; no realtime stream
+      if (this.unsub === 'started') return
+      this.unsub = 'started'
+      try {
+        const cached = await loadParksFromCache()
+        if (cached?.list?.length) {
+          this.parks = cached.list
+          this._cache = {}
+          for (const p of cached.list) this._cache[p.id] = p
+          // TTL: if fresh, skip network fetch for now
+          const age = Date.now() - (cached.updatedAt || 0)
+          if (age < CACHE_TTL_MS) return
+        }
+      } catch (e) {
+        console.warn('Failed to read parks cache', e)
+      }
+
+      await this.refresh()
+    },
+
+    async refresh() {
       try {
         const qref = query(collection(db, 'parks'), orderBy('name'))
-        this.unsub = onSnapshot(
-          qref,
-          (snap) => {
-            this.parks = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
-          },
-          (err) => {
-            console.warn('onSnapshot parks failed; using demo data', err)
-            this.useDemo()
-          }
-        )
+        const snap = await getDocs(qref)
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+        this.parks = list
+        this._cache = {}
+        for (const p of list) this._cache[p.id] = p
+        await saveParksToCache(list).catch(() => {})
       } catch (e) {
-        console.warn('parks snapshot init failed', e)
-        this.useDemo()
+        if (!this.parks?.length) {
+          console.warn('parks fetch failed; using demo data', e)
+          this.useDemo()
+        } else {
+          console.warn('parks refresh failed (kept cached list)', e)
+        }
       }
     },
     useDemo() {
@@ -120,3 +139,59 @@ export const useParksStore = defineStore('parks', {
     },
   },
 })
+
+// ---- Minimal IndexedDB cache (key-value store) ----
+const DB_NAME = 'shredly'
+const DB_VERSION = 1
+const STORE = 'kv'
+const PARKS_KEY = 'parks'
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24h
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION)
+    req.onupgradeneeded = () => {
+      const db = req.result
+      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE)
+    }
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = () => reject(req.error)
+  })
+}
+function idbGet(db, key) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readonly')
+    const store = tx.objectStore(STORE)
+    const req = store.get(key)
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = () => reject(req.error)
+  })
+}
+function idbSet(db, key, val) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite')
+    const store = tx.objectStore(STORE)
+    const req = store.put(val, key)
+    req.onsuccess = () => resolve()
+    req.onerror = () => reject(req.error)
+  })
+}
+
+async function loadParksFromCache() {
+  try {
+    const db = await openDB()
+    const entry = await idbGet(db, PARKS_KEY)
+    if (!entry || !Array.isArray(entry.list)) return null
+    return entry
+  } catch {
+    return null
+  }
+}
+
+async function saveParksToCache(list) {
+  try {
+    const db = await openDB()
+    const entry = { list, updatedAt: Date.now() }
+    await idbSet(db, PARKS_KEY, entry)
+  } catch {}
+}

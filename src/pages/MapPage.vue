@@ -432,6 +432,10 @@ onMounted(async () => {
     const p = await store.loadOne(id)
     if (p) selectedId.value = id
   }
+  // window resize handling (debounced) for fitting bounds
+  const onResize = () => setTimeout(() => fitToContent(10), 150)
+  window.addEventListener('resize', onResize)
+  onBeforeUnmount(() => window.removeEventListener('resize', onResize))
 })
 
 onBeforeUnmount(() => {
@@ -446,14 +450,14 @@ watch(
   () => nearest.value,
   () => {
     updateMarkersInView()
-    nextTick(fitToContent(10))
+    nextTick(() => fitToContent(10))
   }
 )
 watch(
   () => hasUserLoc.value,
   () => {
     placeUserMarker()
-    nextTick(fitToContent(10))
+    nextTick(() => fitToContent(10))
   }
 )
 
@@ -466,7 +470,6 @@ watch(
   { deep: false }
 )
 
-window.addEventListener('resize', () => setTimeout(fitToContent(10), 150))
 </script>
 
 <style scoped>

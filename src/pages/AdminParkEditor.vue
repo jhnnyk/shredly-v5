@@ -19,10 +19,12 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ParkForm from '../components/ParkForm.vue'
 import { useAdminParksStore } from '../store/parksAdminStore'
+import { useParksStore } from '../store/parksStore'
 
 const route = useRoute()
 const router = useRouter()
 const store = useAdminParksStore()
+const publicParks = useParksStore()
 
 const id = computed(() => route.params.id)
 const isNew = computed(() => id.value === 'new')
@@ -64,6 +66,8 @@ async function save(data) {
     await store.updatePark(id.value, data)
   }
   alert('Saved ✅')
+  // refresh public parks cache so Home/Map reflect changes without waiting for TTL
+  publicParks.refresh?.()
 }
 function goBack() {
   router.push({ name: 'adminParks' })
