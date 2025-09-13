@@ -9,10 +9,18 @@
     />
 
     <!-- cover (collapses if missing) -->
-    <div v-if="coverUrl" class="card-media">
-      <img :src="coverUrl" alt="" loading="lazy" decoding="async" />
+    <div class="card-media" :class="{ 'is-empty': !coverUrl }">
+      <img
+        v-if="coverUrl"
+        :src="coverUrl"
+        :srcset="coverSrcSet"
+        sizes="(max-width: 700px) 90vw, 33vw"
+        alt=""
+        loading="lazy"
+        decoding="async"
+      />
       <!-- optional top fade for readability on busy photos -->
-      <div class="img-gradient-top" aria-hidden="true"></div>
+      <div v-if="coverUrl" class="img-gradient-top" aria-hidden="true"></div>
     </div>
 
     <!-- status stamp -->
@@ -25,7 +33,7 @@
       {{ status === 'construction' ? 'Under construction' : 'Closed' }}
     </div>
 
-    <div class="body" :class="{ 'overlay-panel': !!coverUrl }">
+    <div class="body overlay-panel">
       <div class="title-row">
         <div class="title-left">
           <div class="name">
@@ -116,6 +124,18 @@ const coverUrl = computed(() => {
   )
 })
 
+const coverSrcSet = computed(() => {
+  if (!cover) return ''
+  const parts = []
+  if (cover.sm?.webp) parts.push(`${cover.sm.webp} 320w`)
+  if (cover.md?.webp) parts.push(`${cover.md.webp} 640w`)
+  if (!parts.length) {
+    if (cover.sm?.jpg) parts.push(`${cover.sm.jpg} 512w`)
+    if (cover.md?.jpg) parts.push(`${cover.md.jpg} 1024w`)
+  }
+  return parts.join(', ')
+})
+
 const isNum = (v) => {
   const n = Number(v)
   return Number.isFinite(n)
@@ -132,6 +152,9 @@ const distanceLabel = computed(() => {
 .park-card {
   position: relative;
   padding: 0;
+  /* avoid work for offscreen cards on large lists */
+  content-visibility: auto;
+  contain-intrinsic-size: 240px;
 }
 
 /* let media/border define shape */
@@ -145,6 +168,9 @@ const distanceLabel = computed(() => {
   aspect-ratio: 16 / 9;
   overflow: hidden;
   border-bottom: 1px solid var(--outline);
+}
+.card-media.is-empty {
+  background: var(--bg-elev);
 }
 
 .card-media img {
@@ -207,8 +233,8 @@ const distanceLabel = computed(() => {
   flex: 0 0 auto;
 }
 
-/* --- overlay mode when cover exists --- */
-.park-card.has-cover .body {
+/* --- overlay compact body pinned to bottom for consistent height --- */
+.park-card .body {
   position: absolute;
   left: 0;
   right: 0;

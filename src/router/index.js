@@ -1,10 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../pages/HomeView.vue'
-import MapPage from '../pages/MapPage.vue'
-import ParkDetailPage from '../pages/ParkDetailPage.vue'
-import ProfilePage from '../pages/ProfilePage.vue'
-import AdminParkList from '../pages/AdminParkList.vue'
-import AdminParkEditor from '../pages/AdminParkEditor.vue'
 import { useAuthStore } from '../store/authStore'
 
 const router = createRouter({
@@ -14,33 +9,33 @@ const router = createRouter({
     {
       path: '/map',
       name: 'map',
-      component: MapPage,
+      component: () => import('../pages/MapPage.vue'),
       meta: { title: 'Skatepark Map | Shredly' },
     },
     {
       path: '/park/:id',
       name: 'park',
-      component: ParkDetailPage,
+      component: () => import('../pages/ParkDetailPage.vue'),
       props: true,
       meta: { title: 'Skatepark | Shredly' },
     },
     {
       path: '/profile/:uid?',
       name: 'profile',
-      component: ProfilePage,
+      component: () => import('../pages/ProfilePage.vue'),
       props: true,
       meta: { title: 'Shredly profile' },
     },
     {
       path: '/admin/parks',
       name: 'adminParks',
-      component: AdminParkList,
+      component: () => import('../pages/AdminParkList.vue'),
       meta: { requiresAdmin: true, title: 'Shredly admin' },
     },
     {
       path: '/admin/parks/:id',
       name: 'adminParkEditor',
-      component: AdminParkEditor,
+      component: () => import('../pages/AdminParkEditor.vue'),
       meta: { requiresAdmin: true, title: 'Shredly admin' },
     },
   ],

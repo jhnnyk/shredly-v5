@@ -15,38 +15,36 @@
     </div>
 
     <div class="section-title">Nearest skateparks</div>
-    <div
-      ref="listEl"
-      class="grid nearest-list"
-      style="
-        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-        gap: 16px;
-      "
-    >
-      <ParkCard
-        v-for="p in nearest"
-        :key="p.id"
-        :id="p.id"
-        :name="p.name"
-        :status="p.status || 'open'"
-        :cityState="(p.city || '') + (p.state ? ', ' + p.state : '')"
-        :size="p.sizeSqft"
-        :builder="p.builder"
-        :hours="p.hours"
-        :tags="p.tags"
-        :visited="vstore.isVisited(p.id)"
-        :cover="p.cover"
-        :visitorsCount="p.visitorsCount"
-        :photosCount="p.photosCount"
-        :distanceKm="hasUserLoc ? p._d : null"
-      />
+    <div ref="listEl">
+      <VirtualGrid :items="nearest" :itemMinWidth="260" :gap="16">
+        <template #default="{ item: p, style }">
+          <div v-if="p" :style="style">
+            <ParkCard
+              :id="p.id"
+              :name="p.name"
+              :status="p.status || 'open'"
+              :cityState="(p.city || '') + (p.state ? ', ' + p.state : '')"
+              :size="p.sizeSqft"
+              :builder="p.builder"
+              :hours="p.hours"
+              :tags="p.tags"
+              :visited="vstore.isVisited(p.id)"
+              :cover="p.cover"
+              :visitorsCount="p.visitorsCount"
+              :photosCount="p.photosCount"
+              :distanceKm="hasUserLoc ? p._d : null"
+            />
+          </div>
+        </template>
+      </VirtualGrid>
     </div>
   </section>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import ParkCard from '../components/ParkCard.vue'
+import VirtualGrid from '../components/VirtualGrid.vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useParksStore } from '../store/parksStore'
@@ -69,7 +67,7 @@ const selectedId = ref(null)
 
 let map, maplibre
 let userMarker = null
-let parkMarkers = []
+let markerMap = new Map() // id -> Marker
 let openPopup = null
 let currentPopupParkId = null
 
@@ -120,6 +118,7 @@ function toggleVisited(id) {
 
 async function initMap() {
   try {
+    await ensureMapCss()
     maplibre = await import('maplibre-gl')
     map = new maplibre.Map({
       container: mapEl.value,
@@ -143,8 +142,8 @@ async function initMap() {
     map.on('load', () => {
       mapReady.value = true
       placeUserMarker()
-      drawParkMarkers()
-      bindMapHitTest()
+      updateMarkersInView()
+      bindMapMoveUpdates()
       nextTick(() => fitToContent(10))
     })
   } catch (e) {
@@ -265,24 +264,48 @@ function openPopupForPark(p) {
   }, 0)
 }
 
-function drawParkMarkers() {
-  if (!map || !maplibre) return
-  parkMarkers.forEach((m) => m.remove())
-  parkMarkers = []
+const MAX_MARKERS = 600
+function parksInView(limit = MAX_MARKERS) {
+  if (!map) return []
+  const b = map.getBounds()
+  const west = b.getWest(), east = b.getEast(), south = b.getSouth(), north = b.getNorth()
+  const inBox = nearest.value.filter(
+    (p) => p.lng >= west && p.lng <= east && p.lat >= south && p.lat <= north
+  )
+  return inBox.slice(0, limit)
+}
 
+function updateMarkersInView() {
+  if (!map || !maplibre) return
+  const keep = new Set(parksInView().map((p) => p.id))
+  // remove markers that are no longer needed
+  for (const [id, mk] of markerMap) {
+    if (!keep.has(id)) {
+      mk.remove()
+      markerMap.delete(id)
+    }
+  }
+  // add/update needed markers
   for (const p of nearest.value) {
+    if (!keep.has(p.id)) continue
+    if (markerMap.has(p.id)) {
+      // update appearance
+      const mk = markerMap.get(p.id)
+      const elem = mk.getElement()
+      const spec = pinSpec(p.status, visited.value.has(p.id))
+      const c = COLORS[spec.key]
+      elem.style.setProperty('--pin-bg', c.bg)
+      continue
+    }
     const el = makeParkPinSvg(
       visited.value.has(p.id),
       p.status || 'open',
       p.name
     )
     el.style.cursor = 'pointer'
-
     const mk = new maplibre.Marker({ element: el, anchor: 'bottom' })
       .setLngLat([p.lng, p.lat])
       .addTo(map)
-
-    // Try direct DOM click (works in most browsers)
     const elem = mk.getElement()
     elem.style.pointerEvents = 'auto'
     ;['pointerup', 'click', 'touchend'].forEach((ev) =>
@@ -295,33 +318,18 @@ function drawParkMarkers() {
         { passive: true }
       )
     )
-
-    parkMarkers.push(mk)
+    markerMap.set(p.id, mk)
   }
 }
 
-function bindMapHitTest() {
-  const hit = (e) => {
-    if (!map) return
-    const pt = e.point || map.project(e.lngLat) // MapLibre provides e.point on 'click'
-    const threshold = 22 // px radius
-    let best = null,
-      bestD2 = Infinity
-    for (const p of nearest.value) {
-      const s = map.project([p.lng, p.lat])
-      const dx = s.x - pt.x,
-        dy = s.y - pt.y
-      const d2 = dx * dx + dy * dy
-      if (d2 < bestD2) {
-        bestD2 = d2
-        best = p
-      }
-    }
-    if (best && bestD2 <= threshold * threshold) openPopupForPark(best)
-  }
-  map.on('click', hit)
-  map.on('touchend', hit)
+function bindMapMoveUpdates() {
+  if (!map) return
+  const refresh = () => updateMarkersInView()
+  map.on('moveend', refresh)
+  map.on('zoomend', refresh)
 }
+
+// Removed map-wide hit testing in favor of marker clicks for performance.
 
 /* --- CAMERA --- */
 
@@ -382,6 +390,25 @@ function locateMe() {
   )
 }
 
+// lazy-load MapLibre CSS when the map page mounts
+let mapCssLoaded = false
+async function ensureMapCss() {
+  if (mapCssLoaded) return
+  const href = 'https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css'
+  if (document.querySelector(`link[href="${href}"]`)) {
+    mapCssLoaded = true
+    return
+  }
+  await new Promise((resolve) => {
+    const link = document.createElement('link')
+    link.rel = 'stylesheet'
+    link.href = href
+    link.onload = () => resolve()
+    document.head.appendChild(link)
+  })
+  mapCssLoaded = true
+}
+
 /* --- LIFECYCLE --- */
 
 onMounted(async () => {
@@ -407,10 +434,18 @@ onMounted(async () => {
   }
 })
 
+onBeforeUnmount(() => {
+  try {
+    for (const [, mk] of markerMap) mk.remove()
+    markerMap.clear()
+    if (map) map.remove()
+  } catch {}
+})
+
 watch(
   () => nearest.value,
   () => {
-    drawParkMarkers()
+    updateMarkersInView()
     nextTick(fitToContent(10))
   }
 )
@@ -425,7 +460,8 @@ watch(
 watch(
   () => vstore.set,
   () => {
-    drawParkMarkers()
+    // update visited styling: rebuild nearby markers
+    updateMarkersInView()
   },
   { deep: false }
 )
