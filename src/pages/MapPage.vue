@@ -2,7 +2,7 @@
 <template>
   <section>
     <div class="card map-card">
-      <div class="map-wrap" ref="mapEl">
+      <div class="map-wrap map-wrap--lg" ref="mapEl">
         <div v-if="!mapReady" class="map-placeholder">Map loading…</div>
 
         <!-- overlay UI -->
@@ -434,32 +434,7 @@ window.addEventListener('resize', () => setTimeout(fitToContent(10), 150))
 </script>
 
 <style scoped>
-.map-wrap {
-  position: relative;
-  height: 440px;
-  border: 1px solid var(--outline);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-.map-placeholder {
-  height: 100%;
-  background: radial-gradient(
-      600px 260px at 0% 0%,
-      var(--accent-soft),
-      transparent 60%
-    ),
-    repeating-linear-gradient(
-      0deg,
-      #162541,
-      #162541 2px,
-      #141f31 2px,
-      #141f31 18px
-    );
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-2);
-}
+/* base map styles come from tokens.css (.map-wrap, .map-placeholder) */
 
 /* Overlay UI */
 .map-ui {
@@ -481,10 +456,10 @@ window.addEventListener('resize', () => setTimeout(fitToContent(10), 150))
 
 .map-btn {
   appearance: none;
-  border: 1px solid #2b3b5a;
+  border: 1px solid var(--outline);
   border-radius: 999px;
   padding: 8px 12px;
-  background: #0e1a2b;
+  background: var(--bg-elev);
   color: var(--text);
   font-weight: 700;
   cursor: pointer;
@@ -505,7 +480,7 @@ window.addEventListener('resize', () => setTimeout(fitToContent(10), 150))
   position: absolute;
   left: 10px;
   bottom: 10px;
-  background: #0e1a2b;
+  background: var(--bg-elev);
   border: 1px solid var(--outline);
   padding: 6px 10px;
   border-radius: 999px;
@@ -532,22 +507,6 @@ window.addEventListener('resize', () => setTimeout(fitToContent(10), 150))
 .dot.park {
   background: #7fb6ff;
   border-color: #00142888;
-}
-
-/* Pulse animation for user marker */
-@keyframes pulse {
-  0% {
-    transform: scale(0.6);
-    opacity: 0.85;
-  }
-  70% {
-    transform: scale(1.4);
-    opacity: 0;
-  }
-  100% {
-    transform: scale(1.4);
-    opacity: 0;
-  }
 }
 
 /* Themed popup */
@@ -579,10 +538,10 @@ window.addEventListener('resize', () => setTimeout(fitToContent(10), 150))
 }
 :deep(.park-popup .pp-btn) {
   appearance: none;
-  border: 1px solid #2b3b5a;
+  border: 1px solid var(--outline);
   border-radius: 999px;
   padding: 6px 10px;
-  background: #0e1a2b;
+  background: var(--bg-elev);
   color: var(--text);
   font-weight: 700;
   cursor: pointer;

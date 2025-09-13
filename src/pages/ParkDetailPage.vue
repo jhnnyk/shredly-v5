@@ -3,9 +3,9 @@
     <!-- hero (full-bleed) -->
     <div class="hero" :class="{ 'has-image': !!heroUrl }">
       <img v-if="heroUrl" class="hero-img" :src="heroUrl" alt="" />
-      <div class="hero-grad" aria-hidden="true"></div>
+      <div class="img-gradient-top" aria-hidden="true"></div>
 
-      <div class="hero-overlay">
+      <div class="hero-overlay overlay-panel">
         <h1 class="hero-name">{{ park?.name || 'Skatepark' }}</h1>
         <p class="tagline">
           <i-material-symbols-location-on-outline-rounded
@@ -17,7 +17,7 @@
       </div>
 
       <!-- status stamp -->
-      <div v-if="statusBadge" class="stamp" :class="statusBadge.class">
+      <div v-if="statusBadge" class="status-badge" :class="statusBadge.class">
         {{ statusBadge.text }}
       </div>
     </div>
@@ -271,9 +271,9 @@ const isAdmin = computed(() => !!auth?.isAdmin)
 
 const statusBadge = computed(() => {
   const s = (park.value?.status || 'open').toLowerCase()
-  if (s === 'closed') return { class: 'closed', text: 'Closed' }
+  if (s === 'closed') return { class: 'is-closed', text: 'Closed' }
   if (s === 'construction')
-    return { class: 'construction', text: 'Under construction' }
+    return { class: 'is-construction', text: 'Under construction' }
   return null
 })
 
@@ -421,19 +421,7 @@ function openLB(idOrIndex) {
   transform: translateZ(0); /* better scrolling perf on iOS */
 }
 
-/* top-to-bottom gradient for text legibility on busy photos */
-.hero-grad {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(
-      to top,
-      rgba(6, 12, 22, 0.78) 0%,
-      rgba(6, 12, 22, 0.48) 40%,
-      rgba(6, 12, 22, 0) 70%
-    ),
-    linear-gradient(to bottom, rgba(6, 12, 22, 0.2), rgba(6, 12, 22, 0) 40%);
-}
+/* gradient moved to global .img-gradient-top */
 
 /* the translucent bottom overlay panel */
 .hero-overlay {
@@ -443,9 +431,6 @@ function openLB(idOrIndex) {
   bottom: 0;
   z-index: 2;
   padding: 14px 16px 18px;
-  background: rgba(10, 20, 35, 0.42);
-  backdrop-filter: blur(2px);
-  box-shadow: 0 -24px 48px -16px rgba(10, 20, 35, 0.55) inset;
 }
 
 .hero-name {
@@ -464,34 +449,6 @@ function openLB(idOrIndex) {
   display: flex;
   align-items: center;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
-}
-
-.stamp {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  font-family: 'Protest Guerrilla', system-ui, sans-serif;
-  text-transform: uppercase;
-  padding: 6px 10px;
-  border-radius: 8px;
-  transform: rotate(-8deg);
-  font-size: 18px;
-  line-height: 1;
-  user-select: none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-  z-index: 3;
-}
-
-.stamp.closed {
-  color: #ff99b1;
-  background: rgba(59, 17, 29, 0.45);
-  border: 2px solid #6b1a2a;
-}
-
-.stamp.construction {
-  color: #ffef9a;
-  background: rgba(44, 42, 20, 0.45);
-  border: 2px solid #5a5520;
 }
 
 .facts {
@@ -559,9 +516,5 @@ function openLB(idOrIndex) {
   height: 100%;
 }
 
-@media (max-width: 700px) {
-  .photos {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
+/* photos grid handled by PhotoGrid.vue */
 </style>

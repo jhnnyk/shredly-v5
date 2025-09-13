@@ -12,20 +12,20 @@
     <div v-if="coverUrl" class="card-media">
       <img :src="coverUrl" alt="" loading="lazy" decoding="async" />
       <!-- optional top fade for readability on busy photos -->
-      <div class="media-gradient" aria-hidden="true"></div>
+      <div class="img-gradient-top" aria-hidden="true"></div>
     </div>
 
     <!-- status stamp -->
     <div
       v-if="status && status !== 'open'"
-      class="status-stamp"
-      :class="'status-' + status"
+      class="status-badge"
+      :class="'is-' + status"
       :aria-label="status === 'construction' ? 'Under construction' : 'Closed'"
     >
       {{ status === 'construction' ? 'Under construction' : 'Closed' }}
     </div>
 
-    <div class="body">
+    <div class="body" :class="{ 'overlay-panel': !!coverUrl }">
       <div class="title-row">
         <div class="title-left">
           <div class="name">
@@ -215,12 +215,6 @@ const distanceLabel = computed(() => {
   bottom: 0;
   z-index: 6; /* above image & stretched link background */
   padding: 10px 12px 12px;
-  /* translucent panel w/ slight blur */
-  background: rgba(10, 20, 35, 0.42);
-  backdrop-filter: blur(2px);
-  /* soft top fade so the panel blends into photo */
-  box-shadow: 0 -20px 40px -10px rgba(10, 20, 35, 0.5) inset;
-  /* border-top: 1px solid #0b1424aa; */
 }
 .park-card.has-cover .name {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
@@ -229,54 +223,5 @@ const distanceLabel = computed(() => {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
-/* tight, wrap-friendly meta row */
-.meta {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  font-size: 12px;
-  color: var(--text-2);
-}
-
-/* status stamp stays as you had it */
-.status-stamp {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 6;
-  font-family: 'Protest Guerrilla', system-ui, sans-serif;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 6px 10px;
-  border-radius: 8px;
-  transform: rotate(6deg);
-  font-size: 16px;
-  line-height: 1;
-  user-select: none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-  backdrop-filter: blur(1px);
-}
-.status-stamp.status-closed {
-  color: #ff99b1;
-  background: rgba(59, 17, 29, 0.45);
-  border: 2px solid #6b1a2a;
-}
-.status-stamp.status-construction {
-  color: #ffef9a;
-  background: rgba(44, 42, 20, 0.45);
-  border: 2px solid #5a5520;
-}
-
-/* a subtle fade from bottom upward to help text legibility */
-.media-gradient {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    to top,
-    rgba(6, 12, 22, 0.72) 0%,
-    rgba(6, 12, 22, 0.42) 45%,
-    rgba(6, 12, 22, 0) 70%
-  );
-  pointer-events: none;
-}
+/* gradient moved to global .img-gradient-top */
 </style>

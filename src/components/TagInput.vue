@@ -93,7 +93,7 @@ function onPaste(e) {
   padding: 6px;
   border: 1px solid var(--outline);
   border-radius: 8px;
-  background: #0e1a2b;
+  background: var(--bg-elev);
 }
 .tag-input.disabled {
   opacity: 0.6;
@@ -115,8 +115,8 @@ function onPaste(e) {
   gap: 6px;
   padding: 4px 8px;
   border-radius: 999px;
-  background: #10233a;
-  border: 1px solid #2b3b5a;
+  background: var(--muted);
+  border: 1px solid var(--outline);
   color: var(--text-2);
   font-weight: 700;
   font-size: 12px;
@@ -125,7 +125,7 @@ function onPaste(e) {
   appearance: none;
   border: 0;
   background: transparent;
-  color: #9eb0d1;
+  color: var(--text-2);
   cursor: pointer;
   line-height: 1;
   font-size: 14px;

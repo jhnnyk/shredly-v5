@@ -207,7 +207,7 @@ function lockScroll(lock) {
   text-decoration: none;
   font-weight: 800;
   background: rgba(10, 20, 35, 0.28);
-  border: 1px solid #2b3b5a;
+  border: 1px solid var(--outline);
   padding: 3px 8px;
   border-radius: 8px;
 }
@@ -223,7 +223,7 @@ function lockScroll(lock) {
   display: grid;
   place-items: center;
   background: rgba(10, 20, 35, 0.6);
-  border: 1px solid #2b3b5a;
+  border: 1px solid var(--outline);
   color: #e7edff;
   cursor: pointer;
 }

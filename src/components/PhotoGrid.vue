@@ -185,7 +185,7 @@ function openFromGrid(p) {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
   background: rgba(10, 20, 35, 0.28);
   backdrop-filter: blur(2px);
-  border: 1px solid #2b3b5a;
+  border: 1px solid var(--outline);
 }
 .photo-tile .credit:hover {
   transform: translateY(-1px);
@@ -226,8 +226,8 @@ function openFromGrid(p) {
   height: 6px;
   overflow: hidden;
   margin-bottom: 8px;
-  border: 1px solid #2b3b5a;
-  background: #162541;
+  border: 1px solid var(--outline);
+  background: var(--muted);
   border-radius: 999px;
 }
 .ph.processing .progress .bar {
