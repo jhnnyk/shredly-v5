@@ -40,8 +40,14 @@
               :photos="photos"
               :showCredit="true"
               credit-type="park"
+              @open="openLB"
             />
             <div v-else class="muted">No photos yet.</div>
+            <PhotoLightbox
+              v-model:show="showLB"
+              :photos="viewablePhotos"
+              :startIndex="lbIndex"
+            />
           </div>
 
           <div class="mt-16 flex g-8">
@@ -96,12 +102,15 @@ import {
 import { db } from '../lib/firebase'
 import { useAuthStore } from '../store/authStore'
 import PhotoGrid from '../components/PhotoGrid.vue'
+import PhotoLightbox from '../components/PhotoLightbox.vue'
 import AuthModal from '../components/AuthModal.vue'
 
 const route = useRoute()
 const auth = useAuthStore()
 const showAuth = ref(false)
 const authMode = ref('login')
+const showLB = ref(false)
+const lbIndex = ref(0)
 
 function openAuth(mode = 'login') {
   authMode.value = mode
@@ -129,6 +138,19 @@ const userData = ref({ displayName: '' })
 
 // their photos (public)
 const photos = ref([])
+const viewablePhotos = computed(() =>
+  photos.value.filter((p) => p.status === 'ready')
+)
+
+function openLB(idOrIndex) {
+  const list = viewablePhotos.value
+  const i =
+    typeof idOrIndex === 'number'
+      ? idOrIndex
+      : list.findIndex((p) => p.id === idOrIndex)
+  lbIndex.value = i >= 0 ? i : 0
+  showLB.value = true
+}
 
 async function loadUser(uid) {
   if (!uid) return
