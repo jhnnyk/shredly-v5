@@ -70,6 +70,8 @@ let userMarker = null
 let markerMap = new Map() // id -> Marker
 let openPopup = null
 let currentPopupParkId = null
+let isMapInteracting = false
+let lastInteractionAt = 0
 
 // OSM raster with labels (tokenless)
 const OSM_RASTER_STYLE = {
@@ -350,15 +352,16 @@ function updateMarkersInView() {
       .addTo(map)
     const elem = mk.getElement()
     elem.style.pointerEvents = 'auto'
-    ;['pointerup', 'click', 'touchend'].forEach((ev) =>
-      elem.addEventListener(
-        ev,
-        (e) => {
-          e.stopPropagation()
-          openPopupForPark(p)
-        },
-        { passive: true }
-      )
+    elem.addEventListener(
+      'click',
+      (e) => {
+        e.stopPropagation()
+        // Ignore clicks immediately following a map gesture
+        if (isMapInteracting) return
+        if (performance.now() - lastInteractionAt < 140) return
+        openPopupForPark(p)
+      },
+      { passive: true }
     )
     markerMap.set(p.id, mk)
   }
@@ -367,8 +370,25 @@ function updateMarkersInView() {
 function bindMapMoveUpdates() {
   if (!map) return
   const refresh = () => updateMarkersInView()
-  map.on('moveend', refresh)
-  map.on('zoomend', refresh)
+  const onStart = () => {
+    isMapInteracting = true
+  }
+  const onEnd = () => {
+    isMapInteracting = false
+    lastInteractionAt = performance.now()
+    refresh()
+  }
+  map.on('movestart', onStart)
+  map.on('zoomstart', onStart)
+  map.on('dragstart', onStart)
+  map.on('rotatestart', onStart)
+  map.on('pitchstart', onStart)
+
+  map.on('moveend', onEnd)
+  map.on('zoomend', onEnd)
+  map.on('dragend', onEnd)
+  map.on('rotateend', onEnd)
+  map.on('pitchend', onEnd)
 }
 
 // Removed map-wide hit testing in favor of marker clicks for performance.
