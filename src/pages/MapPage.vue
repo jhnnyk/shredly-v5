@@ -223,6 +223,12 @@ function makeParkPinSvg(isVisited = false, status = 'open', name = '') {
   return root
 }
 
+function bestCover(p) {
+  const c = p?.cover || null
+  // Popups are small → prefer small image, then fall back
+  return c?.sm?.webp || c?.sm?.jpg || c?.md?.webp || c?.md?.jpg || ''
+}
+
 function openPopupForPark(p) {
   currentPopupParkId = p.id
   if (!map || !maplibre || !p) return
@@ -231,12 +237,19 @@ function openPopupForPark(p) {
     openPopup = null
   }
 
+  const cover = bestCover(p)
+  const bgStyle = cover ? `style="background-image:url('${cover}');"` : ''
+
   const html = `
-    <div class="pp">
-      <div class="pp-name">${p.name}</div>
-      <div class="pp-sub">${p.city || ''}${p.state ? `, ${p.state}` : ''}</div>
-      <div class="pp-actions">
-        <button class="pp-btn pp-view">View details</button>
+    <div class="pp ${cover ? 'has-cover' : ''}">
+      <div class="pp-bg" ${bgStyle} aria-hidden="true"></div>
+      <div class="pp-footer pp-view" role="button" tabindex="0" aria-label="View details">
+        <div class="pp-text">
+          <div class="pp-name">${p.name}</div>
+          <div class="pp-sub">${p.city || ''}${
+    p.state ? `, ${p.state}` : ''
+  }</div>
+        </div>
       </div>
     </div>`
 
@@ -257,10 +270,15 @@ function openPopupForPark(p) {
     const root = document.querySelector('.park-popup .pp')
     if (!root) return
     const view = root.querySelector('.pp-view')
-    const visit = root.querySelector('.pp-visit')
-    view &&
-      (view.onclick = () => router.push({ name: 'park', params: { id: p.id } }))
-    visit && (visit.onclick = () => toggleVisited(p.id))
+    if (view) {
+      view.onclick = () => router.push({ name: 'park', params: { id: p.id } })
+      view.onkeydown = (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          router.push({ name: 'park', params: { id: p.id } })
+        }
+      }
+    }
   }, 0)
 }
 
@@ -268,7 +286,10 @@ const MAX_MARKERS = 600
 function parksInView(limit = MAX_MARKERS) {
   if (!map) return []
   const b = map.getBounds()
-  const west = b.getWest(), east = b.getEast(), south = b.getSouth(), north = b.getNorth()
+  const west = b.getWest(),
+    east = b.getEast(),
+    south = b.getSouth(),
+    north = b.getNorth()
   const inBox = nearest.value.filter(
     (p) => p.lng >= west && p.lng <= east && p.lat >= south && p.lat <= north
   )
@@ -469,7 +490,6 @@ watch(
   },
   { deep: false }
 )
-
 </script>
 
 <style scoped>
@@ -550,17 +570,74 @@ watch(
 
 /* Themed popup */
 :deep(.park-popup .maplibregl-popup-content) {
-  background: #0e1726;
-  border: 1px solid var(--outline);
+  background: transparent;
+  border: none;
   color: var(--text);
   border-radius: 12px;
-  padding: 12px;
-  min-width: 200px;
+  padding: 0;
+  min-width: 220px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
+:deep(.park-popup .maplibregl-popup-close-button) {
+  width: 34px;
+  height: 34px;
+  font-size: 24px;
+  color: #e7edff;
+  right: 2px;
+  top: 2px;
+}
 :deep(.park-popup .maplibregl-popup-tip) {
-  border-top-color: #0e1726 !important;
-  border-bottom-color: #0e1726 !important;
+  border-top-color: transparent !important;
+  border-bottom-color: transparent !important;
+}
+:deep(.park-popup .pp) {
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+  height: 150px; /* fixed popup height for all parks */
+}
+:deep(.park-popup .pp-bg) {
+  position: absolute;
+  inset: 0;
+  background-color: #0e1726; /* fallback */
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+:deep(.park-popup .pp-footer) {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 10px 12px 12px;
+  background: rgba(10, 20, 35, 0.42);
+  backdrop-filter: blur(2px);
+  box-shadow: 0 -20px 40px -10px rgba(10, 20, 35, 0.5) inset;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+:deep(.park-popup .pp-text) {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+:deep(.park-popup .pp-name) {
+  font-weight: 800;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+:deep(.park-popup .pp-sub) {
+  font-size: 12px;
+  color: var(--text-2);
+  margin-bottom: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 :deep(.park-popup .pp-name) {
   font-weight: 800;
@@ -570,28 +647,6 @@ watch(
   font-size: 12px;
   color: var(--text-2);
   margin-bottom: 10px;
-}
-:deep(.park-popup .pp-actions) {
-  display: flex;
-  gap: 8px;
-}
-:deep(.park-popup .pp-btn) {
-  appearance: none;
-  border: 1px solid var(--outline);
-  border-radius: 999px;
-  padding: 6px 10px;
-  background: var(--bg-elev);
-  color: var(--text);
-  font-weight: 700;
-  cursor: pointer;
-}
-:deep(.park-popup .pp-btn:hover) {
-  transform: translateY(-1px);
-}
-:deep(.park-popup .pp-btn.pp-view) {
-  background: linear-gradient(180deg, var(--accent-2), var(--accent));
-  color: #0b0b10;
-  border-color: #ff8fc7;
 }
 
 /* Make sure markers are on top and clickable in Safari */
