@@ -223,6 +223,14 @@ function makeParkPinSvg(isVisited = false, status = 'open', name = '') {
   return root
 }
 
+function esc(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
 function bestCover(p) {
   const c = p?.cover || null
   // Popups are small → prefer small image, then fall back
@@ -240,15 +248,28 @@ function openPopupForPark(p) {
   const cover = bestCover(p)
   const bgStyle = cover ? `style="background-image:url('${cover}');"` : ''
 
+  const sizeMeta = Number.isFinite(Number(p.sizeSqft))
+    ? `<span class="ms icon" aria-hidden="true">square_foot</span>
+        ${Number(p.sizeSqft).toLocaleString()} sqft
+      `
+    : ''
+  const tags =
+    Array.isArray(p.tags) && p.tags.length
+      ? `<div class="pp-tags">${p.tags
+          .map((t) => `<span>#${esc(t)}</span>`)
+          .join('')}</div>`
+      : ''
+
   const html = `
     <div class="pp ${cover ? 'has-cover' : ''}">
       <div class="pp-bg" ${bgStyle} aria-hidden="true"></div>
       <div class="pp-footer pp-view" role="button" tabindex="0" aria-label="View details">
         <div class="pp-text">
-          <div class="pp-name">${p.name}</div>
-          <div class="pp-sub">${p.city || ''}${
-    p.state ? `, ${p.state}` : ''
-  }</div>
+          <div class="pp-name">${esc(p.name)}</div>
+          <div class="pp-meta">
+            ${sizeMeta}
+            ${tags}
+          </div>
         </div>
       </div>
     </div>`
@@ -626,10 +647,24 @@ watch(
 }
 :deep(.park-popup .pp-name) {
   font-weight: 800;
+  font-size: 16px;
   margin-bottom: 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+:deep(.park-popup .pp-meta) {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+:deep(.park-popup .pp-tags) {
+  display: flex;
+  margin-left: 6px;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 :deep(.park-popup .pp-sub) {
   font-size: 12px;
@@ -647,6 +682,9 @@ watch(
   font-size: 12px;
   color: var(--text-2);
   margin-bottom: 10px;
+}
+:deep(.park-popup .icon) {
+  margin-right: 0;
 }
 
 /* Make sure markers are on top and clickable in Safari */
