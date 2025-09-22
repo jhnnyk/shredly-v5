@@ -16,6 +16,8 @@ export const useParksStore = defineStore('parks', {
     visited: JSON.parse(localStorage.getItem('visitedParks') || '[]'),
     unsub: null,
     _cache: {}, // id -> park
+    cachePrimed: false,
+    cacheUpdatedAt: 0,
   }),
   getters: {
     visitedSet: (s) => new Set(s.visited),
@@ -36,10 +38,38 @@ export const useParksStore = defineStore('parks', {
     setQuery(q) {
       this.query = q
     },
+    async primeFromCache() {
+      if (this.cachePrimed) {
+        return { hadCache: !!this.parks.length, updatedAt: this.cacheUpdatedAt }
+      }
+      this.cachePrimed = true
+      try {
+        const cached = await loadParksFromCache()
+        if (cached?.list?.length) {
+          this.parks = cached.list
+          this._cache = {}
+          for (const p of cached.list) this._cache[p.id] = p
+          this.cacheUpdatedAt = cached.updatedAt || 0
+          return { hadCache: true, updatedAt: this.cacheUpdatedAt }
+        }
+      } catch (e) {
+        console.warn('Failed to read parks cache', e)
+      }
+      this.cacheUpdatedAt = 0
+      return { hadCache: false, updatedAt: 0 }
+    },
     async loadOne(id) {
       // use cache if parks already loaded
       const cached = this.byId(id)
       if (cached) return cached
+      await this.primeFromCache()
+      const fromCache = this.byId(id)
+      if (fromCache) {
+        if (this.unsub !== 'started') {
+          this.start().catch(() => {})
+        }
+        return fromCache
+      }
       try {
         const snap = await getDoc(doc(db, 'parks', id))
         if (snap.exists()) {
@@ -62,20 +92,11 @@ export const useParksStore = defineStore('parks', {
       // Cache-first one-time fetch with TTL; no realtime stream
       if (this.unsub === 'started') return
       this.unsub = 'started'
-      try {
-        const cached = await loadParksFromCache()
-        if (cached?.list?.length) {
-          this.parks = cached.list
-          this._cache = {}
-          for (const p of cached.list) this._cache[p.id] = p
-          // TTL: if fresh, skip network fetch for now
-          const age = Date.now() - (cached.updatedAt || 0)
-          if (age < CACHE_TTL_MS) return
-        }
-      } catch (e) {
-        console.warn('Failed to read parks cache', e)
+      const { hadCache, updatedAt } = await this.primeFromCache()
+      if (hadCache) {
+        const age = Date.now() - (updatedAt || 0)
+        if (age < CACHE_TTL_MS) return
       }
-
       await this.refresh()
     },
 
@@ -87,6 +108,8 @@ export const useParksStore = defineStore('parks', {
         this.parks = list
         this._cache = {}
         for (const p of list) this._cache[p.id] = p
+        this.cachePrimed = true
+        this.cacheUpdatedAt = Date.now()
         await saveParksToCache(list).catch(() => {})
       } catch (e) {
         if (!this.parks?.length) {
