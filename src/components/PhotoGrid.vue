@@ -116,7 +116,7 @@ function onToggleLike(p) {
       <!-- credit overlay (don’t open lightbox) -->
       <RouterLink
         v-if="showCredit && creditType === 'user' && p.userId"
-        class="credit"
+        class="overlay-pill credit-pill"
         :to="{ name: 'profile', params: { uid: p.userId } }"
         @click.stop
       >
@@ -125,7 +125,7 @@ function onToggleLike(p) {
 
       <RouterLink
         v-else-if="showCredit && creditType === 'park' && p.parkId"
-        class="credit"
+        class="overlay-pill credit-pill"
         :to="{ name: 'park', params: { id: p.parkId } }"
         @click.stop
       >
@@ -133,7 +133,7 @@ function onToggleLike(p) {
       </RouterLink>
 
       <button
-        class="like-btn"
+        class="overlay-pill like-pill"
         type="button"
         :aria-pressed="hasLiked(p)"
         :disabled="p.status !== 'ready'"
@@ -202,24 +202,52 @@ function onToggleLike(p) {
   display: block;
 }
 
-/* pink credit overlay */
-.photo-tile .credit {
+/* Overlay pills (credit + like) */
+.overlay-pill {
   position: absolute;
-  right: 6px;
   bottom: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 4px 8px;
-  border-radius: 8px;
+  border-radius: 999px;
+  border: 1px solid var(--outline);
+  background: rgba(10, 20, 35, 0.45);
   color: var(--accent);
   font-weight: 800;
   font-size: 12px;
   text-decoration: none;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
-  background: rgba(10, 20, 35, 0.28);
-  backdrop-filter: blur(2px);
-  border: 1px solid var(--outline);
+  cursor: pointer;
+  z-index: 3;
+  backdrop-filter: blur(3px);
+  transition: transform 0.15s ease;
 }
-.photo-tile .credit:hover {
+.overlay-pill:hover {
   transform: translateY(-1px);
+}
+.overlay-pill.credit-pill {
+  right: 6px;
+}
+.overlay-pill.like-pill {
+  left: 6px;
+  font-weight: 700;
+  padding: 3px 8px;
+  text-shadow: none;
+}
+.overlay-pill.like-pill .icon {
+  font-size: 16px;
+}
+.overlay-pill.like-pill:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.overlay-pill.like-pill:disabled:hover {
+  transform: none;
+}
+.overlay-pill.like-pill[aria-pressed='true'] {
+  background: rgba(10, 20, 35, 0.6);
+  border-color: rgba(10, 20, 35, 0.9);
 }
 
 /* processing / upload UI */
@@ -302,7 +330,7 @@ function onToggleLike(p) {
   border-radius: 999px;
   border: 1px solid var(--outline);
   background: rgba(10, 20, 35, 0.42);
-  color: #e7edff;
+  color: var(--accent);
   font-weight: 700;
   font-size: 12px;
   cursor: pointer;
@@ -317,8 +345,8 @@ function onToggleLike(p) {
   font-size: 16px;
 }
 .like-btn[aria-pressed='true'] {
-  background: rgba(47, 92, 255, 0.35);
-  border-color: rgba(95, 141, 255, 0.9);
-  color: #f8fbff;
+  background: rgba(10, 20, 35, 0.55);
+  border-color: rgba(10, 20, 35, 0.9);
+  color: var(--accent);
 }
 </style>

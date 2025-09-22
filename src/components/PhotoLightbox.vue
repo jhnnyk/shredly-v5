@@ -164,7 +164,7 @@ function onToggleLike() {
         />
         <button
           v-if="currentPhoto"
-          class="lb-like"
+          class="overlay-pill like-pill"
           type="button"
           :aria-pressed="currentLiked"
           @click.stop="onToggleLike"
@@ -286,9 +286,8 @@ function onToggleLike() {
   height: 22px;
 }
 
-.lb-like {
+.overlay-pill {
   position: absolute;
-  left: 12px;
   bottom: 18px;
   display: inline-flex;
   align-items: center;
@@ -296,22 +295,25 @@ function onToggleLike() {
   padding: 6px 12px;
   border-radius: 999px;
   border: 1px solid var(--outline);
-  background: rgba(10, 20, 35, 0.65);
-  color: #f2f5ff;
+  background: rgba(10, 20, 35, 0.45);
+  color: var(--accent);
   font-weight: 700;
   font-size: 14px;
   cursor: pointer;
   backdrop-filter: blur(4px);
 }
-.lb-like[aria-pressed='true'] {
-  background: rgba(47, 92, 255, 0.4);
-  border-color: rgba(95, 141, 255, 0.9);
+.overlay-pill.like-pill {
+  left: 12px;
 }
-.lb-like .ico {
+.overlay-pill.like-pill[aria-pressed='true'] {
+  background: rgba(5, 10, 18, 0.65);
+  border-color: rgba(5, 10, 18, 0.9);
+}
+.overlay-pill.like-pill .ico {
   width: 20px;
   height: 20px;
 }
-.lb-like .count {
+.overlay-pill.like-pill .count {
   line-height: 1;
 }
 
