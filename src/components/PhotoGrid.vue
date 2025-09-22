@@ -16,8 +16,9 @@ const props = defineProps({
   // Credit overlay
   showCredit: { type: Boolean, default: false },
   creditType: { type: String, default: 'user' }, // 'user' | 'park'
+  likedPhotoIds: { type: Object, default: () => ({}) },
 })
-const emit = defineEmits(['open'])
+const emit = defineEmits(['open', 'toggle-like'])
 
 function bestSrc(p) {
   return p?.outputs?.md?.webp || p?.outputs?.sm?.webp || ''
@@ -55,6 +56,15 @@ async function removePhoto(id) {
 function openFromGrid(p) {
   if (!p || p.status !== 'ready' || !bestSrc(p)) return
   emit('open', p.id) // parent already expects id; your openLB maps id -> index
+}
+
+function hasLiked(p) {
+  return !!props.likedPhotoIds[p?.id]
+}
+
+function onToggleLike(p) {
+  if (!p || p.status !== 'ready') return
+  emit('toggle-like', p.id)
 }
 </script>
 
@@ -121,6 +131,27 @@ function openFromGrid(p) {
       >
         View park
       </RouterLink>
+
+      <button
+        class="like-btn"
+        type="button"
+        :aria-pressed="hasLiked(p)"
+        :disabled="p.status !== 'ready'"
+        @click.stop.prevent="onToggleLike(p)"
+        @keydown.stop
+      >
+        <i-material-symbols-thumb-up-rounded
+          v-if="hasLiked(p)"
+          class="icon"
+          aria-hidden="true"
+        />
+        <i-material-symbols-thumb-up-outline-rounded
+          v-else
+          class="icon"
+          aria-hidden="true"
+        />
+        <span class="count">{{ p.likesCount ?? 0 }}</span>
+      </button>
 
       <!-- delete (don’t open lightbox) -->
       <button
@@ -258,5 +289,36 @@ function openFromGrid(p) {
 }
 .tiny.danger:hover {
   filter: brightness(1.05);
+}
+
+.like-btn {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--outline);
+  background: rgba(10, 20, 35, 0.42);
+  color: #e7edff;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  z-index: 3;
+  backdrop-filter: blur(3px);
+}
+.like-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.like-btn .icon {
+  font-size: 16px;
+}
+.like-btn[aria-pressed='true'] {
+  background: rgba(47, 92, 255, 0.35);
+  border-color: rgba(95, 141, 255, 0.9);
+  color: #f8fbff;
 }
 </style>

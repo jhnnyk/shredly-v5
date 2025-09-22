@@ -247,6 +247,33 @@ exports.photosTally = onDocumentWritten('photos/{photoId}', async (event) => {
     )
 })
 
+exports.photoLikesTally = onDocumentWritten(
+  'photos/{photoId}/likes/{uid}',
+  async (event) => {
+    const before = event.data.before.exists
+    const after = event.data.after.exists
+    if (before === after) return
+    const delta = !before && after ? 1 : -1
+    const { photoId } = event.params
+    const ref = db.collection('photos').doc(photoId)
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref)
+      const current = snap.exists && typeof snap.get('likesCount') === 'number'
+        ? snap.get('likesCount')
+        : 0
+      const next = Math.max(0, current + delta)
+      tx.set(
+        ref,
+        {
+          likesCount: next,
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      )
+    })
+  }
+)
+
 exports.cleanupPhoto = onDocumentDeleted('photos/{photoId}', async (event) => {
   const data = event.data?.previous?.data()
   if (!data) return

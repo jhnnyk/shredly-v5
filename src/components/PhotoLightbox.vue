@@ -6,14 +6,20 @@ const props = defineProps({
   photos: { type: Array, default: () => [] }, // array of photo docs
   startIndex: { type: Number, default: 0 },
   localPreview: { type: Object, default: () => ({}) }, // { [photoId]: objectURL }
+  likedPhotoIds: { type: Object, default: () => ({}) },
 })
-const emit = defineEmits(['update:show'])
+const emit = defineEmits(['update:show', 'toggle-like'])
 
 const idx = ref(0)
 const open = computed({
   get: () => props.show,
   set: (v) => emit('update:show', v),
 })
+const currentPhoto = computed(() => props.photos[idx.value] || null)
+const currentLikeCount = computed(() => currentPhoto.value?.likesCount ?? 0)
+const currentLiked = computed(() =>
+  currentPhoto.value ? !!props.likedPhotoIds[currentPhoto.value.id] : false
+)
 
 watch(
   () => props.show,
@@ -108,6 +114,12 @@ function onTouchEnd(e) {
 function lockScroll(lock) {
   document?.body && (document.body.style.overflow = lock ? 'hidden' : '')
 }
+
+function onToggleLike() {
+  if (!currentPhoto.value) return
+  if (currentPhoto.value.status !== 'ready') return
+  emit('toggle-like', currentPhoto.value.id)
+}
 </script>
 
 <template>
@@ -150,6 +162,25 @@ function lockScroll(lock) {
           decoding="async"
           loading="eager"
         />
+        <button
+          v-if="currentPhoto"
+          class="lb-like"
+          type="button"
+          :aria-pressed="currentLiked"
+          @click.stop="onToggleLike"
+        >
+          <i-material-symbols-thumb-up-rounded
+            v-if="currentLiked"
+            class="ico"
+            aria-hidden="true"
+          />
+          <i-material-symbols-thumb-up-outline-rounded
+            v-else
+            class="ico"
+            aria-hidden="true"
+          />
+          <span class="count">{{ currentLikeCount }}</span>
+        </button>
         <figcaption class="lb-cap" v-if="photos[idx]">
           <span class="dim">{{ idx + 1 }} / {{ photos.length }}</span>
           <span class="spacer"></span>
@@ -176,6 +207,7 @@ function lockScroll(lock) {
   padding: 18px;
 }
 .lb-fig {
+  position: relative;
   max-width: min(96vw, 1200px);
   max-height: 88vh;
   width: 100%;
@@ -252,6 +284,35 @@ function lockScroll(lock) {
 .ico {
   width: 22px;
   height: 22px;
+}
+
+.lb-like {
+  position: absolute;
+  left: 12px;
+  bottom: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--outline);
+  background: rgba(10, 20, 35, 0.65);
+  color: #f2f5ff;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+.lb-like[aria-pressed='true'] {
+  background: rgba(47, 92, 255, 0.4);
+  border-color: rgba(95, 141, 255, 0.9);
+}
+.lb-like .ico {
+  width: 20px;
+  height: 20px;
+}
+.lb-like .count {
+  line-height: 1;
 }
 
 /* small screens */

@@ -174,7 +174,9 @@
       :uploadProgress="uploadProgress"
       :showCredit="true"
       credit-type="user"
+      :liked-photo-ids="likedByMe"
       @open="openLB"
+      @toggle-like="toggleLike"
     />
 
     <div v-else class="muted">No photos yet.</div>
@@ -185,6 +187,8 @@
       :photos="viewablePhotos"
       :startIndex="lbIndex"
       :localPreview="localPreview"
+      :liked-photo-ids="likedByMe"
+      @toggle-like="toggleLike"
     />
   </section>
 </template>
@@ -199,6 +203,10 @@ import {
   onSnapshot,
   addDoc,
   serverTimestamp,
+  doc,
+  getDoc,
+  setDoc,
+  deleteDoc,
 } from 'firebase/firestore'
 import { ref as sRef, uploadBytesResumable } from 'firebase/storage'
 import { db, storage } from '../lib/firebase'
@@ -208,6 +216,7 @@ import { useAuthStore } from '../store/authStore'
 import { useVisitedStore } from '../store/visitedStore'
 import PhotoGrid from '../components/PhotoGrid.vue'
 import PhotoLightbox from '../components/PhotoLightbox.vue'
+import { normalizePhotoDoc, sortPhotosByLikes } from '../utils/photos'
 
 const route = useRoute()
 const router = useRouter()
@@ -222,6 +231,9 @@ const uploading = ref(false)
 const showLB = ref(false)
 const lbIndex = ref(0)
 const fileInputRef = ref(null)
+const currentUserId = computed(() => auth.user?.uid || '')
+const likedByMe = ref({})
+let likeSyncToken = 0
 
 onMounted(async () => {
   park.value = await store.loadOne(String(id))
@@ -236,9 +248,43 @@ onMounted(async () => {
     orderBy('createdAt', 'desc')
   )
   onSnapshot(q, (snap) => {
-    photos.value = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    const list = snap.docs
+      .map((d) => normalizePhotoDoc(d))
+      .filter(Boolean)
+    photos.value = sortPhotosByLikes(list)
+    refreshLikedState()
   })
 })
+
+async function refreshLikedState() {
+  const uid = currentUserId.value
+  const seq = ++likeSyncToken
+  if (!uid) {
+    likedByMe.value = {}
+    return
+  }
+  const ready = photos.value.filter((p) => p.status === 'ready')
+  if (!ready.length) {
+    likedByMe.value = {}
+    return
+  }
+  try {
+    const results = await Promise.all(
+      ready.map(async (p) => {
+        const snap = await getDoc(doc(db, 'photos', p.id, 'likes', uid))
+        return [p.id, snap.exists()]
+      })
+    )
+    if (seq !== likeSyncToken) return
+    const map = {}
+    for (const [pid, liked] of results) {
+      if (liked) map[pid] = true
+    }
+    likedByMe.value = map
+  } catch (err) {
+    console.warn('Failed to load like state', err)
+  }
+}
 
 const heroUrl = computed(() => {
   const c = park.value?.cover
@@ -264,6 +310,17 @@ const heroUrl = computed(() => {
   )
 })
 
+watch(currentUserId, () => {
+  refreshLikedState()
+})
+
+watch(
+  () => photos.value.map((p) => `${p.id}:${p.status}`).join('|'),
+  () => {
+    refreshLikedState()
+  }
+)
+
 const goToAuth = () => {
   router.push('/profile')
 }
@@ -281,6 +338,46 @@ const onChoosePhotosClick = (e) => {
 }
 
 const isAdmin = computed(() => !!auth?.isAdmin)
+
+async function toggleLike(photoId) {
+  if (!auth.user) return goToAuth()
+  const uid = currentUserId.value
+  if (!uid) return
+  const idx = photos.value.findIndex((p) => p.id === photoId)
+  if (idx < 0) return
+  const original = photos.value[idx]
+  if (!original || original.status !== 'ready') return
+  const alreadyLiked = !!likedByMe.value[photoId]
+  const delta = alreadyLiked ? -1 : 1
+  const previousPhotos = photos.value.slice()
+  const previousLikes = { ...likedByMe.value }
+  const nextLikes = { ...previousLikes }
+  if (alreadyLiked) delete nextLikes[photoId]
+  else nextLikes[photoId] = true
+  const updated = {
+    ...original,
+    likesCount: Math.max(0, (original.likesCount ?? 0) + delta),
+  }
+  const next = photos.value.slice()
+  next.splice(idx, 1, updated)
+  photos.value = sortPhotosByLikes(next)
+  likedByMe.value = nextLikes
+  try {
+    const likeRef = doc(db, 'photos', photoId, 'likes', uid)
+    if (alreadyLiked) {
+      await deleteDoc(likeRef)
+    } else {
+      await setDoc(likeRef, {
+        userId: uid,
+        createdAt: serverTimestamp(),
+      })
+    }
+  } catch (err) {
+    console.error('toggleLike failed', err)
+    photos.value = previousPhotos
+    likedByMe.value = previousLikes
+  }
+}
 
 // const photos = computed(() => (park.value?.photos || []).slice(0, 24))
 
@@ -334,6 +431,7 @@ async function uploadOne(file) {
     parkId,
     userDisplayName,
     status: 'uploading',
+    likesCount: 0,
     createdAt: serverTimestamp(),
   })
 

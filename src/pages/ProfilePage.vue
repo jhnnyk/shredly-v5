@@ -40,13 +40,17 @@
               :photos="photos"
               :showCredit="true"
               credit-type="park"
+              :liked-photo-ids="likedByMe"
               @open="openLB"
+              @toggle-like="toggleLike"
             />
             <div v-else class="muted">No photos yet.</div>
             <PhotoLightbox
               v-model:show="showLB"
               :photos="viewablePhotos"
               :startIndex="lbIndex"
+              :liked-photo-ids="likedByMe"
+              @toggle-like="toggleLike"
             />
           </div>
 
@@ -98,12 +102,16 @@ import {
   where,
   orderBy,
   onSnapshot,
+  setDoc,
+  deleteDoc,
+  serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useAuthStore } from '../store/authStore'
 import PhotoGrid from '../components/PhotoGrid.vue'
 import PhotoLightbox from '../components/PhotoLightbox.vue'
 import AuthModal from '../components/AuthModal.vue'
+import { normalizePhotoDoc, sortPhotosByLikes } from '../utils/photos'
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -111,6 +119,9 @@ const showAuth = ref(false)
 const authMode = ref('login')
 const showLB = ref(false)
 const lbIndex = ref(0)
+const currentUserId = computed(() => auth.user?.uid || '')
+const likedByMe = ref({})
+let likeSyncToken = 0
 
 function openAuth(mode = 'login') {
   authMode.value = mode
@@ -142,6 +153,36 @@ const viewablePhotos = computed(() =>
   photos.value.filter((p) => p.status === 'ready')
 )
 
+async function refreshLikedState() {
+  const uid = currentUserId.value
+  const seq = ++likeSyncToken
+  if (!uid) {
+    likedByMe.value = {}
+    return
+  }
+  const ready = photos.value.filter((p) => p.status === 'ready')
+  if (!ready.length) {
+    likedByMe.value = {}
+    return
+  }
+  try {
+    const results = await Promise.all(
+      ready.map(async (p) => {
+        const snap = await getDoc(doc(db, 'photos', p.id, 'likes', uid))
+        return [p.id, snap.exists()]
+      })
+    )
+    if (seq !== likeSyncToken) return
+    const map = {}
+    for (const [pid, liked] of results) {
+      if (liked) map[pid] = true
+    }
+    likedByMe.value = map
+  } catch (err) {
+    console.warn('Failed to load like state', err)
+  }
+}
+
 function openLB(idOrIndex) {
   const list = viewablePhotos.value
   const i =
@@ -151,6 +192,17 @@ function openLB(idOrIndex) {
   lbIndex.value = i >= 0 ? i : 0
   showLB.value = true
 }
+
+watch(currentUserId, () => {
+  refreshLikedState()
+})
+
+watch(
+  () => photos.value.map((p) => `${p.id}:${p.status}`).join('|'),
+  () => {
+    refreshLikedState()
+  }
+)
 
 async function loadUser(uid) {
   if (!uid) return
@@ -170,8 +222,55 @@ function watchPhotos(uid) {
     orderBy('createdAt', 'desc')
   )
   return onSnapshot(q, (snap) => {
-    photos.value = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    const list = snap.docs
+      .map((d) => normalizePhotoDoc(d))
+      .filter(Boolean)
+    photos.value = sortPhotosByLikes(list)
+    refreshLikedState()
   })
+}
+
+async function toggleLike(photoId) {
+  if (!auth.user) {
+    openAuth('login')
+    return
+  }
+  const uid = currentUserId.value
+  if (!uid) return
+  const idx = photos.value.findIndex((p) => p.id === photoId)
+  if (idx < 0) return
+  const original = photos.value[idx]
+  if (!original || original.status !== 'ready') return
+  const alreadyLiked = !!likedByMe.value[photoId]
+  const delta = alreadyLiked ? -1 : 1
+  const previousPhotos = photos.value.slice()
+  const previousLikes = { ...likedByMe.value }
+  const nextLikes = { ...previousLikes }
+  if (alreadyLiked) delete nextLikes[photoId]
+  else nextLikes[photoId] = true
+  const updated = {
+    ...original,
+    likesCount: Math.max(0, (original.likesCount ?? 0) + delta),
+  }
+  const next = photos.value.slice()
+  next.splice(idx, 1, updated)
+  photos.value = sortPhotosByLikes(next)
+  likedByMe.value = nextLikes
+  try {
+    const likeRef = doc(db, 'photos', photoId, 'likes', uid)
+    if (alreadyLiked) {
+      await deleteDoc(likeRef)
+    } else {
+      await setDoc(likeRef, {
+        userId: uid,
+        createdAt: serverTimestamp(),
+      })
+    }
+  } catch (err) {
+    console.error('toggleLike failed', err)
+    photos.value = previousPhotos
+    likedByMe.value = previousLikes
+  }
 }
 
 let unsubPhotos = null
@@ -191,6 +290,7 @@ watch(viewingUid, async (uid) => {
 function resetProfileState() {
   userData.value = { displayName: '' }
   photos.value = []
+  likedByMe.value = {}
   if (unsubPhotos) {
     unsubPhotos()
     unsubPhotos = null

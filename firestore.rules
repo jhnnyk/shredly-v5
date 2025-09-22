@@ -16,52 +16,54 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if true;
 
-      // Require displayName on create (2–30 chars)
       allow create: if isOwner(uid)
         && request.resource.data.displayName is string
         && request.resource.data.displayName.matches('^.{2,30}$');
 
-      // Only allow owner to edit limited fields; keep displayName non-empty
       allow update: if isOwner(uid)
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(['displayName','photoURL','bio'])
         && request.resource.data.displayName is string
         && request.resource.data.displayName.matches('^.{2,30}$');
-    }
 
-    // Each user's "visited parks" subcollection (private to owner)
-    match /users/{uid}/visited/{parkId} {
-      allow read, write: if isOwner(uid);
+      match /visited/{parkId} {
+        allow read: if isOwner(uid);
+
+        allow create: if isOwner(uid)
+                      && request.resource.data.keys().hasOnly(['parkId','createdAt'])
+                      && request.resource.data.parkId == parkId
+                      && request.resource.data.createdAt is timestamp;
+
+        allow delete: if isOwner(uid);
+        allow update: if false;
+      }
     }
 
     // Public photo metadata for parks
     match /photos/{photoId} {
-      // anyone can view photo metadata
       allow read: if true;
 
-      // users create their own upload record
       allow create: if request.auth != null
                     && request.resource.data.userId == request.auth.uid
                     && request.resource.data.parkId is string
                     && request.resource.data.status in ['uploading','processing']
                     && ('createdAt' in request.resource.data);
 
-      // ✅ owners OR admins can delete any photo (ready/processing/failed)
       allow delete: if request.auth != null
                     && (request.auth.uid == resource.data.userId || isAdmin());
 
-      // no direct updates from clients
       allow update: if false;
-    }
 
-    // Each user can create/delete their own visited park docs
-    match /users/{uid}/visited/{parkId} {
-      allow read: if request.auth != null && request.auth.uid == uid;
-      allow create: if request.auth != null
-                    && request.auth.uid == uid
-                    && request.resource.data.parkId == parkId
-                    && ('createdAt' in request.resource.data); // just require it to be present
-      allow delete: if request.auth != null && request.auth.uid == uid;
-      allow update: if false;
+      match /likes/{uid} {
+        allow read: if isOwner(uid);
+
+        allow create: if isOwner(uid)
+                      && request.resource.data.keys().hasOnly(['userId','createdAt'])
+                      && request.resource.data.userId == uid
+                      && request.resource.data.createdAt is timestamp;
+
+        allow delete: if isOwner(uid);
+        allow update: if false;
+      }
     }
   }
 }
