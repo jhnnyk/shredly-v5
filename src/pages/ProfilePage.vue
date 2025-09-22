@@ -233,8 +233,11 @@ function watchPhotos(uid) {
     const seen = new Set(photoOrder.value)
     const newcomers = list.filter((p) => !seen.has(p.id))
     if (newcomers.length) {
-      const orderedNew = sortPhotosByLikes(newcomers).map((p) => p.id)
-      photoOrder.value = [...photoOrder.value, ...orderedNew]
+      const uploading = newcomers.filter((p) => (p.status || '') !== 'ready')
+      const ready = newcomers.filter((p) => (p.status || '') === 'ready')
+      const prioritized = sortPhotosByLikes(uploading).map((p) => p.id)
+      const orderedReady = sortPhotosByLikes(ready).map((p) => p.id)
+      photoOrder.value = [...prioritized, ...photoOrder.value, ...orderedReady]
     }
 
     const byId = {}
