@@ -120,6 +120,7 @@ function onToggleLike() {
   if (currentPhoto.value.status !== 'ready') return
   emit('toggle-like', currentPhoto.value.id)
 }
+
 </script>
 
 <template>
@@ -162,34 +163,35 @@ function onToggleLike() {
           decoding="async"
           loading="eager"
         />
-        <button
-          v-if="currentPhoto"
-          class="overlay-pill like-pill"
-          type="button"
-          :aria-pressed="currentLiked"
-          @click.stop="onToggleLike"
-        >
-          <i-material-symbols-thumb-up-rounded
-            v-if="currentLiked"
-            class="ico"
-            aria-hidden="true"
-          />
-          <i-material-symbols-thumb-up-outline-rounded
-            v-else
-            class="ico"
-            aria-hidden="true"
-          />
-          <span class="count">{{ currentLikeCount }}</span>
-        </button>
+        <!-- like button now lives with meta footer -->
         <figcaption class="lb-cap" v-if="photos[idx]">
           <span class="dim">{{ idx + 1 }} / {{ photos.length }}</span>
           <span class="spacer"></span>
-          <RouterLink
-            v-if="photos[idx].userId"
-            :to="{ name: 'profile', params: { uid: photos[idx].userId } }"
-            class="credit"
-            >{{ photos[idx].userDisplayName || 'User' }}</RouterLink
-          >
+          <div class="lb-meta" v-if="photos[idx].userId">
+            <RouterLink
+              :to="{ name: 'profile', params: { uid: photos[idx].userId } }"
+              class="overlay-pill credit-pill"
+              >{{ photos[idx].userDisplayName || 'User' }}</RouterLink
+            >
+            <button
+              class="overlay-pill like-pill"
+              type="button"
+              :aria-pressed="currentLiked"
+              @click.stop="onToggleLike"
+            >
+              <i-material-symbols-thumb-up-rounded
+                v-if="currentLiked"
+                class="ico"
+                aria-hidden="true"
+              />
+              <i-material-symbols-thumb-up-outline-rounded
+                v-else
+                class="ico"
+                aria-hidden="true"
+              />
+              <span class="count">{{ currentLikeCount }}</span>
+            </button>
+          </div>
         </figcaption>
       </figure>
     </div>
@@ -212,6 +214,7 @@ function onToggleLike() {
   max-height: 88vh;
   width: 100%;
   margin: 0;
+  z-index: 1;
 }
 .lb-img {
   display: block;
@@ -258,6 +261,7 @@ function onToggleLike() {
   border: 1px solid var(--outline);
   color: #e7edff;
   cursor: pointer;
+  z-index: 4;
 }
 .lb-btn:hover {
   filter: brightness(1.06);
@@ -287,8 +291,6 @@ function onToggleLike() {
 }
 
 .overlay-pill {
-  position: absolute;
-  bottom: 18px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -301,20 +303,28 @@ function onToggleLike() {
   font-size: 14px;
   cursor: pointer;
   backdrop-filter: blur(4px);
+  text-decoration: none;
+  position: relative;
+  z-index: 4;
 }
-.overlay-pill.like-pill {
-  left: 12px;
+.credit-pill {
+  font-weight: 800;
 }
-.overlay-pill.like-pill[aria-pressed='true'] {
+.like-pill[aria-pressed='true'] {
   background: rgba(5, 10, 18, 0.65);
   border-color: rgba(5, 10, 18, 0.9);
 }
-.overlay-pill.like-pill .ico {
+.like-pill .ico {
   width: 20px;
   height: 20px;
 }
-.overlay-pill.like-pill .count {
+.like-pill .count {
   line-height: 1;
+}
+.lb-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 /* small screens */

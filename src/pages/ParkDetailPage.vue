@@ -234,6 +234,7 @@ const fileInputRef = ref(null)
 const currentUserId = computed(() => auth.user?.uid || '')
 const likedByMe = ref({})
 let likeSyncToken = 0
+const photoOrder = ref([])
 
 onMounted(async () => {
   park.value = await store.loadOne(String(id))
@@ -251,7 +252,30 @@ onMounted(async () => {
     const list = snap.docs
       .map((d) => normalizePhotoDoc(d))
       .filter(Boolean)
-    photos.value = sortPhotosByLikes(list)
+    if (!photoOrder.value.length) {
+      photoOrder.value = sortPhotosByLikes(list).map((p) => p.id)
+    }
+
+    const seen = new Set(photoOrder.value)
+    const newcomers = list.filter((p) => !seen.has(p.id))
+    if (newcomers.length) {
+      const orderedNew = sortPhotosByLikes(newcomers).map((p) => p.id)
+      photoOrder.value = [...photoOrder.value, ...orderedNew]
+    }
+
+    const byId = {}
+    for (const p of list) byId[p.id] = p
+
+    const ordered = []
+    const nextOrder = []
+    for (const id of photoOrder.value) {
+      if (byId[id]) {
+        ordered.push(byId[id])
+        nextOrder.push(id)
+      }
+    }
+    photoOrder.value = nextOrder
+    photos.value = ordered
     refreshLikedState()
   })
 })
@@ -360,7 +384,7 @@ async function toggleLike(photoId) {
   }
   const next = photos.value.slice()
   next.splice(idx, 1, updated)
-  photos.value = sortPhotosByLikes(next)
+  photos.value = next
   likedByMe.value = nextLikes
   try {
     const likeRef = doc(db, 'photos', photoId, 'likes', uid)
