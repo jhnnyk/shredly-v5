@@ -67,11 +67,11 @@ const selectedId = ref(null)
 
 let map, maplibre
 let userMarker = null
-let markerMap = new Map() // id -> Marker
+let markerMap = new Map()
+let clusterMarkerMap = new Map()
+let markerSyncHandle = 0
 let openPopup = null
 let currentPopupParkId = null
-let isMapInteracting = false
-let lastInteractionAt = 0
 
 // OSM raster with labels (tokenless)
 const OSM_RASTER_STYLE = {
@@ -144,8 +144,8 @@ async function initMap() {
     map.on('load', () => {
       mapReady.value = true
       placeUserMarker()
-      updateMarkersInView()
-      bindMapMoveUpdates()
+      setupParksSource()
+      updateParksSource()
       nextTick(() => fitToContent(10))
     })
   } catch (e) {
@@ -187,42 +187,46 @@ function placeUserMarker() {
 }
 
 const COLORS = {
-  open: { bg: '#5ea2ff' }, // blue
-  visited: { bg: '#24d87a' }, // green
-  closed: { bg: '#e74c3c' }, // red
-  construction: { bg: '#f1c40f' }, // yellow
+  open: { bg: '#5ea2ff', icon: 'skateboarding' },
+  visited: { bg: '#24d87a', icon: 'check' },
+  closed: { bg: '#e74c3c', icon: 'close' },
+  construction: { bg: '#f1c40f', icon: 'build' },
 }
 
 function pinSpec(status, isVisited) {
   const s = (status || 'open').toLowerCase()
-  if (s === 'closed') return { key: 'closed', icon: 'close' }
-  if (s === 'construction') return { key: 'construction', icon: 'build' }
-  if (isVisited) return { key: 'visited', icon: 'check' }
-  return { key: 'open', icon: 'skateboarding' }
+  if (s === 'closed') return COLORS.closed
+  if (s === 'construction') return COLORS.construction
+  if (isVisited) return COLORS.visited
+  return COLORS.open
 }
 
 const PIN_PATH =
   'M2 6V6.29266C2 7.72154 2.4863 9.10788 3.37892 10.2236L8 16L12.6211 10.2236C13.5137 9.10788 14 7.72154 14 6.29266V6C14 2.68629 11.3137 0 8 0C4.68629 0 2 2.68629 2 6Z'
 
-function makeParkPinSvg(isVisited = false, status = 'open', name = '') {
-  const { key, icon } = pinSpec(status, isVisited)
-  const c = COLORS[key]
-
+function makeParkPinSvg(park) {
+  const spec = pinSpec(park.status, visited.value.has(park.id))
   const root = document.createElement('div')
-  root.className = `pinx pinx--${key}`
+  root.className = 'pinx'
   root.setAttribute('role', 'img')
-  root.setAttribute('aria-label', name ? `${name} (${key})` : key)
-
+  root.setAttribute('aria-label', park.name ? `${park.name}` : 'Skatepark')
   root.innerHTML = `
     <svg class="pinx-svg" viewBox="0 0 16 16" aria-hidden="true" preserveAspectRatio="xMidYMax meet" focusable="false">
       <path class="pinx-shape" d="${PIN_PATH}"/>
     </svg>
-    <span class="ms pinx-icon" aria-hidden="true">${icon}</span>
+    <span class="ms pinx-icon" aria-hidden="true">${spec.icon}</span>
   `
-
-  root.style.setProperty('--pin-bg', c.bg)
-
+  root.style.setProperty('--pin-bg', spec.bg)
   return root
+}
+
+function updatePin(el, park) {
+  if (!el || !park) return
+  const spec = pinSpec(park.status, visited.value.has(park.id))
+  el.style.setProperty('--pin-bg', spec.bg)
+  el.setAttribute('aria-label', park.name ? `${park.name}` : 'Skatepark')
+  const icon = el.querySelector('.pinx-icon')
+  if (icon) icon.textContent = spec.icon
 }
 
 function esc(s) {
@@ -305,93 +309,244 @@ function openPopupForPark(p) {
   }, 0)
 }
 
-const MAX_MARKERS = 600
-function parksInView(limit = MAX_MARKERS) {
-  if (!map) return []
-  const b = map.getBounds()
-  const west = b.getWest(),
-    east = b.getEast(),
-    south = b.getSouth(),
-    north = b.getNorth()
-  const inBox = nearest.value.filter(
-    (p) => p.lng >= west && p.lng <= east && p.lat >= south && p.lat <= north
-  )
-  return inBox.slice(0, limit)
+function buildParksGeoJSON() {
+  const features = []
+  const visitedSet = visited.value || new Set()
+  for (const p of store.parks || []) {
+    if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng)) continue
+    const likes = typeof p.likesCount === 'number' ? p.likesCount : 0
+    const createdMillis = (() => {
+      const value = p.createdAt
+      if (!value) return 0
+      if (typeof value === 'number') return value
+      if (typeof value?.seconds === 'number')
+        return value.seconds * 1000 + (value.nanoseconds || 0) / 1e6
+      return 0
+    })()
+    features.push({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
+      properties: {
+        id: p.id,
+        status: (p.status || 'open').toLowerCase(),
+        visited: visitedSet.has(p.id) ? 1 : 0,
+        likes,
+        createdMillis,
+      },
+    })
+  }
+  return { type: 'FeatureCollection', features }
 }
 
-function updateMarkersInView() {
+function updateParksSource() {
+  const data = buildParksGeoJSON()
+  if (!mapReady.value || !map) return
+  const source = map.getSource('parks')
+  if (!source) return
+  source.setData(data)
+  scheduleMarkerSync()
+}
+
+function setupParksSource() {
   if (!map || !maplibre) return
-  const keep = new Set(parksInView().map((p) => p.id))
-  // remove markers that are no longer needed
-  for (const [id, mk] of markerMap) {
+  if (map.getSource('parks')) return
+
+  map.addSource('parks', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+    cluster: true,
+    clusterMaxZoom: 14,
+    clusterRadius: 55,
+  })
+
+  map.addLayer({
+    id: 'clusters',
+    type: 'circle',
+    source: 'parks',
+    filter: ['has', 'point_count'],
+    paint: {
+      'circle-color': 'rgba(47, 92, 255, 0.75)',
+      'circle-stroke-color': 'rgba(10, 20, 35, 0.85)',
+      'circle-stroke-width': 1.2,
+      'circle-radius': [
+        'step',
+        ['get', 'point_count'],
+        16,
+        10,
+        20,
+        30,
+        26,
+      ],
+    },
+  })
+
+  map.addLayer({
+    id: 'cluster-count',
+    type: 'symbol',
+    source: 'parks',
+    filter: ['has', 'point_count'],
+    layout: {
+      'text-field': ['get', 'point_count_abbreviated'],
+      'text-font': ['Open Sans Bold'],
+      'text-size': 12,
+      'text-anchor': 'center',
+      'text-allow-overlap': true,
+    },
+    paint: {
+      'text-color': '#f8fbff',
+    },
+  })
+
+  map.addLayer({
+    id: 'unclustered-park',
+    type: 'circle',
+    source: 'parks',
+    filter: ['!', ['has', 'point_count']],
+    paint: {
+      'circle-color': '#000',
+      'circle-radius': 0.1,
+      'circle-opacity': 0,
+      'circle-stroke-width': 0,
+    },
+  })
+
+  map.on('click', 'clusters', (e) => {
+    const source = map.getSource('parks')
+    if (!source) return
+    const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] })
+    const feature = features?.[0]
+    if (!feature) return
+    const clusterId = Number(feature.properties?.cluster_id)
+    if (!Number.isFinite(clusterId)) return
+    source.getClusterExpansionZoom(clusterId, (err, zoom) => {
+      if (err) return
+      map.easeTo({ center: feature.geometry.coordinates, zoom })
+    })
+  })
+
+  updateParksSource()
+  map.on('moveend', scheduleMarkerSync)
+  map.on('zoomend', scheduleMarkerSync)
+  map.on('data', (e) => {
+    if (e.sourceId === 'parks' && e.isSourceLoaded) scheduleMarkerSync()
+  })
+  scheduleMarkerSync()
+}
+
+function scheduleMarkerSync() {
+  if (!map || !mapReady.value) return
+  if (markerSyncHandle) cancelAnimationFrame(markerSyncHandle)
+  markerSyncHandle = requestAnimationFrame(() => {
+    markerSyncHandle = 0
+    syncDOMMarkers()
+  })
+}
+function syncDOMMarkers() {
+  if (!map || !mapReady.value) return
+  let clusterFeatures = []
+  let parkFeatures = []
+  try {
+    clusterFeatures = map.queryRenderedFeatures(undefined, { layers: ['clusters'] })
+  } catch {}
+  try {
+    parkFeatures = map.queryRenderedFeatures(undefined, { layers: ['unclustered-park'] })
+  } catch {}
+  updateClusterMarkers(clusterFeatures)
+  updateParkMarkers(parkFeatures)
+}
+
+function updateParkMarkers(features) {
+  if (!features) return
+  const keep = new Set()
+  for (const feature of features) {
+    const id = String(feature.properties?.id || '')
+    if (!id) continue
+    const park = store.byId(id) || store.parks.find((p) => p.id === id)
+    if (!park) continue
+    keep.add(id)
+    if (markerMap.has(id)) {
+      const marker = markerMap.get(id)
+      updatePin(marker.getElement(), park)
+      marker.setLngLat([park.lng, park.lat])
+    } else {
+      const el = makeParkPinSvg(park)
+      el.style.cursor = 'pointer'
+      el.addEventListener('click', (e) => {
+        e.stopPropagation()
+        const latest = store.byId(id) || store.parks.find((p) => p.id === id) || park
+        openPopupForPark(latest)
+      })
+      const mk = new maplibre.Marker({ element: el, anchor: 'bottom' })
+        .setLngLat([park.lng, park.lat])
+        .addTo(map)
+      markerMap.set(id, mk)
+    }
+  }
+  for (const [id, marker] of markerMap) {
     if (!keep.has(id)) {
-      mk.remove()
+      marker.remove()
       markerMap.delete(id)
     }
   }
-  // add/update needed markers
-  for (const p of nearest.value) {
-    if (!keep.has(p.id)) continue
-    if (markerMap.has(p.id)) {
-      // update appearance
-      const mk = markerMap.get(p.id)
-      const elem = mk.getElement()
-      const spec = pinSpec(p.status, visited.value.has(p.id))
-      const c = COLORS[spec.key]
-      elem.style.setProperty('--pin-bg', c.bg)
-      continue
-    }
-    const el = makeParkPinSvg(
-      visited.value.has(p.id),
-      p.status || 'open',
-      p.name
-    )
-    el.style.cursor = 'pointer'
-    const mk = new maplibre.Marker({ element: el, anchor: 'bottom' })
-      .setLngLat([p.lng, p.lat])
-      .addTo(map)
-    const elem = mk.getElement()
-    elem.style.pointerEvents = 'auto'
-    elem.addEventListener(
-      'click',
-      (e) => {
+}
+
+function updateClusterMarkers(features) {
+  if (!features) return
+  const keep = new Set()
+  for (const feature of features) {
+    const clusterId = feature.properties?.cluster_id
+    const id = clusterId != null ? String(clusterId) : ''
+    if (!id) continue
+    keep.add(id)
+    const count = feature.properties?.point_count || 0
+    const coords = feature.geometry?.coordinates || [0, 0]
+    if (clusterMarkerMap.has(id)) {
+      const { marker, el } = clusterMarkerMap.get(id)
+      el.textContent = String(count)
+      el.dataset.clusterId = id
+      el.dataset.lng = String(coords[0])
+      el.dataset.lat = String(coords[1])
+      marker.setLngLat(coords)
+    } else {
+      const el = document.createElement('button')
+      el.type = 'button'
+      el.className = 'cluster-marker'
+      el.textContent = String(count)
+      el.dataset.clusterId = id
+      el.dataset.lng = String(coords[0])
+      el.dataset.lat = String(coords[1])
+      el.addEventListener('click', (e) => {
         e.stopPropagation()
-        // Ignore clicks immediately following a map gesture
-        if (isMapInteracting) return
-        if (performance.now() - lastInteractionAt < 140) return
-        openPopupForPark(p)
-      },
-      { passive: true }
-    )
-    markerMap.set(p.id, mk)
+        const src = map.getSource('parks')
+        if (!src) return
+        const cid = Number(el.dataset.clusterId || '')
+        const lng = Number(el.dataset.lng || 0)
+        const lat = Number(el.dataset.lat || 0)
+        if (!Number.isFinite(cid)) return
+        src.getClusterExpansionZoom(cid, (err, zoom) => {
+          if (err) return
+          map.easeTo({ center: [lng, lat], zoom })
+        })
+      })
+      el.addEventListener('mouseenter', () => {
+        map.getCanvas().style.cursor = 'pointer'
+      })
+      el.addEventListener('mouseleave', () => {
+        map.getCanvas().style.cursor = ''
+      })
+      const marker = new maplibre.Marker({ element: el, anchor: 'center' })
+        .setLngLat(coords)
+        .addTo(map)
+      clusterMarkerMap.set(id, { marker, el })
+    }
+  }
+  for (const [id, entry] of clusterMarkerMap) {
+    if (!keep.has(id)) {
+      entry.marker.remove()
+      clusterMarkerMap.delete(id)
+    }
   }
 }
-
-function bindMapMoveUpdates() {
-  if (!map) return
-  const refresh = () => updateMarkersInView()
-  const onStart = () => {
-    isMapInteracting = true
-  }
-  const onEnd = () => {
-    isMapInteracting = false
-    lastInteractionAt = performance.now()
-    refresh()
-  }
-  map.on('movestart', onStart)
-  map.on('zoomstart', onStart)
-  map.on('dragstart', onStart)
-  map.on('rotatestart', onStart)
-  map.on('pitchstart', onStart)
-
-  map.on('moveend', onEnd)
-  map.on('zoomend', onEnd)
-  map.on('dragend', onEnd)
-  map.on('rotateend', onEnd)
-  map.on('pitchend', onEnd)
-}
-
-// Removed map-wide hit testing in favor of marker clicks for performance.
 
 /* --- CAMERA --- */
 
@@ -475,6 +630,7 @@ async function ensureMapCss() {
 
 onMounted(async () => {
   store.start()
+  updateParksSource()
   // Prime nearest calc before map load
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
@@ -504,16 +660,31 @@ onBeforeUnmount(() => {
   try {
     for (const [, mk] of markerMap) mk.remove()
     markerMap.clear()
+    for (const [, entry] of clusterMarkerMap) entry.marker.remove()
+    clusterMarkerMap.clear()
+    if (markerSyncHandle) cancelAnimationFrame(markerSyncHandle)
     if (map) map.remove()
+    map = null
   } catch {}
 })
 
 watch(
   () => nearest.value,
   () => {
-    updateMarkersInView()
+    updateParksSource()
+    scheduleMarkerSync()
     nextTick(() => fitToContent(10))
-  }
+  },
+  { deep: true }
+)
+
+watch(
+  () => store.parks,
+  () => {
+    updateParksSource()
+    scheduleMarkerSync()
+  },
+  { deep: true }
 )
 watch(
   () => hasUserLoc.value,
@@ -526,8 +697,8 @@ watch(
 watch(
   () => vstore.set,
   () => {
-    // update visited styling: rebuild nearby markers
-    updateMarkersInView()
+    updateParksSource()
+    scheduleMarkerSync()
   },
   { deep: false }
 )
@@ -707,14 +878,32 @@ watch(
   margin-right: 0;
 }
 
-/* Make sure markers are on top and clickable in Safari */
-:deep(.maplibregl-marker) {
-  /* z-index: 40; */
-  pointer-events: auto !important;
-}
-
 /* Keep overlay below markers so it can't steal clicks in Safari */
 .map-ui {
   z-index: 5;
 }
+
+:global(.cluster-marker) {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(47, 92, 255, 0.85);
+  border: 1px solid rgba(10, 20, 35, 0.85);
+  color: #f8fbff;
+  font-weight: 700;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  padding: 0;
+  border: none;
+}
+:global(.cluster-marker:hover) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
 </style>
