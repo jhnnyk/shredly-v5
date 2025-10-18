@@ -381,23 +381,6 @@ function setupParksSource() {
   })
 
   map.addLayer({
-    id: 'cluster-count',
-    type: 'symbol',
-    source: 'parks',
-    filter: ['has', 'point_count'],
-    layout: {
-      'text-field': ['get', 'point_count_abbreviated'],
-      'text-font': ['Open Sans Bold'],
-      'text-size': 12,
-      'text-anchor': 'center',
-      'text-allow-overlap': true,
-    },
-    paint: {
-      'text-color': '#f8fbff',
-    },
-  })
-
-  map.addLayer({
     id: 'unclustered-park',
     type: 'circle',
     source: 'parks',
@@ -516,6 +499,7 @@ function updateClusterMarkers(features) {
       el.dataset.lng = String(coords[0])
       el.dataset.lat = String(coords[1])
       el.addEventListener('click', (e) => {
+        e.preventDefault()
         e.stopPropagation()
         const src = map.getSource('parks')
         if (!src) return
@@ -525,7 +509,11 @@ function updateClusterMarkers(features) {
         if (!Number.isFinite(cid)) return
         src.getClusterExpansionZoom(cid, (err, zoom) => {
           if (err) return
-          map.easeTo({ center: [lng, lat], zoom })
+          const currentZoom = map.getZoom()
+          const targetZoom = Math.max(zoom, currentZoom + 1.05)
+          map.once('moveend', scheduleMarkerSync)
+          map.once('zoomend', scheduleMarkerSync)
+          map.easeTo({ center: [lng, lat], zoom: targetZoom + 0.01, duration: 320, essential: true })
         })
       })
       el.addEventListener('mouseenter', () => {
