@@ -93,8 +93,9 @@
           >Edit</RouterLink
         >
       </div>
-      <div class="mt-16 feedback">
-        <a href="#">Report a problem / update</a>
+
+      <div class="feedback">
+        <a href="#" @click.prevent="onReport">Report a problem / update</a>
       </div>
     </div>
 
@@ -193,11 +194,69 @@
       :liked-photo-ids="likedByMe"
       @toggle-like="toggleLike"
     />
+
+    <div
+      v-if="showReport"
+      class="modal-backdrop"
+      ref="reportBackdropRef"
+      @keydown.esc="closeReport"
+      tabindex="0"
+    >
+      <div class="modal">
+        <div class="flex items-center justify-between">
+          <h3 style="margin: 0">Report an issue</h3>
+          <button class="btn btn-ghost" type="button" @click="closeReport">
+            Close
+          </button>
+        </div>
+        <div class="mt-12">
+          <label for="reportMessage">What should we update?</label>
+          <textarea
+            id="reportMessage"
+            ref="reportMessageRef"
+            class="input"
+            rows="5"
+            v-model="reportMessage"
+            placeholder="Describe the change, closure, address update…"
+            required
+          ></textarea>
+          <input
+            v-model="reportTrap"
+            type="text"
+            tabindex="-1"
+            autocomplete="off"
+            style="position: absolute; left: -9999px; width: 1px; height: 1px"
+            aria-hidden="true"
+          />
+        </div>
+        <div class="mt-12 flex g-8">
+          <button
+            class="btn btn-primary"
+            type="button"
+            @click="submitReport"
+            :disabled="reportSending"
+          >
+            Submit
+          </button>
+          <button
+            class="btn"
+            type="button"
+            @click="closeReport"
+            :disabled="reportSending"
+          >
+            Cancel
+          </button>
+        </div>
+        <p v-if="reportError" class="error mt-8" role="alert">
+          {{ reportError }}
+        </p>
+      </div>
+    </div>
   </section>
 </template>
 
 <script setup>
-import { onMounted, ref, computed, watch } from 'vue'
+import { onMounted, ref, computed, watch, nextTick } from 'vue'
 import {
   collection,
   query,
@@ -212,7 +271,8 @@ import {
   deleteDoc,
 } from 'firebase/firestore'
 import { ref as sRef, uploadBytesResumable } from 'firebase/storage'
-import { db, storage } from '../lib/firebase'
+import { httpsCallable } from 'firebase/functions'
+import { db, storage, functions as cloudFunctions } from '../lib/firebase'
 import { useRoute, useRouter } from 'vue-router'
 import { useParksStore } from '../store/parksStore'
 import { useAuthStore } from '../store/authStore'
@@ -237,6 +297,13 @@ const fileInputRef = ref(null)
 const currentUserId = computed(() => auth.user?.uid || '')
 const likedByMe = ref({})
 let likeSyncToken = 0
+const showReport = ref(false)
+const reportMessage = ref('')
+const reportTrap = ref('')
+const reportError = ref('')
+const reportSending = ref(false)
+const reportBackdropRef = ref(null)
+const reportMessageRef = ref(null)
 const photoOrder = ref([])
 
 onMounted(async () => {
@@ -366,6 +433,57 @@ const onChoosePhotosClick = (e) => {
 }
 
 const isAdmin = computed(() => !!auth?.isAdmin)
+
+function onReport() {
+  if (!auth.user) {
+    goToAuth()
+    return
+  }
+  reportMessage.value = ''
+  reportTrap.value = ''
+  reportError.value = ''
+  reportSending.value = false
+  showReport.value = true
+  nextTick(() => {
+    reportBackdropRef.value?.focus?.()
+    reportMessageRef.value?.focus?.()
+  })
+}
+
+function closeReport() {
+  showReport.value = false
+  reportSending.value = false
+}
+
+async function submitReport() {
+  const message = reportMessage.value.trim()
+  if (reportTrap.value) {
+    reportError.value = 'Something went wrong. Please try again.'
+    return
+  }
+  if (!message || message.length < 10) {
+    reportError.value = 'Please include at least 10 characters.'
+    return
+  }
+  reportError.value = ''
+  reportSending.value = true
+  try {
+    const sendReport = httpsCallable(cloudFunctions, 'submitParkReport')
+    await sendReport({
+      message,
+      parkId: String(id),
+      parkName: park.value?.name || '',
+      trap: reportTrap.value,
+      pageUrl: window.location.href,
+    })
+    reportSending.value = false
+    closeReport()
+  } catch (err) {
+    reportError.value =
+      err?.message || 'Could not send report. Please try again.'
+    reportSending.value = false
+  }
+}
 
 async function toggleLike(photoId) {
   if (!auth.user) return goToAuth()

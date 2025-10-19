@@ -5,10 +5,12 @@ const {
   onDocumentDeleted,
   onDocumentWritten,
 } = require('firebase-functions/v2/firestore')
+const { onCall, HttpsError } = require('firebase-functions/v2/https')
 const logger = require('firebase-functions/logger')
 const admin = require('firebase-admin')
 const { v4: uuidv4 } = require('uuid')
 const sharp = require('sharp')
+const nodemailer = require('nodemailer')
 sharp.cache(false) // avoid keeping decoded image caches in RAM
 sharp.concurrency(1) // keep internal parallelism from spiking memory
 
@@ -18,6 +20,23 @@ admin.apps.length || admin.initializeApp()
 const db = admin.firestore()
 const storage = admin.storage()
 const FieldValue = admin.firestore.FieldValue
+
+let mailTransporter = null
+function getMailTransporter() {
+  if (mailTransporter) return mailTransporter
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_SECURE } = process.env
+  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
+    logger.warn('SMTP configuration missing; report emails disabled')
+    return null
+  }
+  mailTransporter = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: Number(SMTP_PORT || 465),
+    secure: SMTP_SECURE ? SMTP_SECURE !== 'false' : true,
+    auth: { user: SMTP_USER, pass: SMTP_PASS },
+  })
+  return mailTransporter
+}
 
 const SIZES = [
   { key: 'sm', w: 320 },
@@ -291,5 +310,56 @@ exports.cleanupPhoto = onDocumentDeleted('photos/{photoId}', async (event) => {
   for (const prefix of prefixes) {
     const [files] = await bucket.getFiles({ prefix })
     await Promise.all(files.map((f) => f.delete().catch(() => {})))
+  }
+})
+
+exports.submitParkReport = onCall(async (request) => {
+  const uid = request.auth?.uid
+  if (!uid) throw new HttpsError('unauthenticated', 'Please sign in to report updates.')
+
+  const { message, parkId, parkName, pageUrl, trap } = request.data || {}
+  if (!parkId || typeof parkId !== 'string') {
+    throw new HttpsError('invalid-argument', 'Park identifier is required.')
+  }
+  if (trap) {
+    logger.warn('Report suppressed (trap)', { uid, parkId })
+    return { delivered: false }
+  }
+  const body = typeof message === 'string' ? message.trim() : ''
+  if (body.length < 10 || body.length > 4000) {
+    throw new HttpsError('invalid-argument', 'Please include a short description (10+ characters).')
+  }
+
+  const userRecord = await admin
+    .auth()
+    .getUser(uid)
+    .catch(() => null)
+  const mailBody = [
+    `User: ${userRecord?.displayName || userRecord?.email || 'Unknown'}`,
+    `UID: ${uid}`,
+    `Email: ${userRecord?.email || 'N/A'}`,
+    `Park: ${parkName || 'Skatepark'} (${parkId || 'unknown'})`,
+    `Page: ${pageUrl || 'N/A'}`,
+    '',
+    body,
+  ].join('\n')
+
+  const transporter = getMailTransporter()
+  if (!transporter) {
+    throw new HttpsError('failed-precondition', 'Reporting is temporarily unavailable.')
+  }
+
+  try {
+    await transporter.sendMail({
+      to: 'admin@shred.ly',
+      from: process.env.REPORT_FROM_EMAIL || transporter.options.auth.user,
+      subject: `Park update: ${parkName || parkId || 'Skatepark'}`,
+      text: mailBody,
+    })
+    logger.info('Park report sent', { uid, parkId })
+    return { delivered: true }
+  } catch (err) {
+    logger.error('Failed to send park report', { uid, parkId, err: String(err) })
+    throw new HttpsError('internal', 'Could not send report right now.')
   }
 })

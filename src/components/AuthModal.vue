@@ -62,7 +62,7 @@
           @click="submit"
           :disabled="
             loading ||
-            (mode === 'signup' && !canSubmitSignup && nameStatus !== 'idle')
+            (mode === 'signup' && (!isDisplayNameValid || nameStatus !== 'available'))
           "
         >
           {{ mode === 'login' ? 'Log in' : 'Sign up' }}
@@ -87,9 +87,8 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
-import { useAuthStore } from '../store/authStore'
-import { checkDisplayNameAvailability } from '../store/authStore'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useAuthStore, checkDisplayNameAvailability } from '../store/authStore'
 
 // accept a mode prop from the parent
 const props = defineProps({
@@ -122,11 +121,6 @@ const isDisplayNameValid = computed(() => {
   return v.length >= 2 && v.length <= 30 && /^[\w\-\.' ]+$/.test(v)
 })
 
-const canSubmitSignup = computed(() => {
-  if (!isDisplayNameValid.value) return false
-  return nameStatus.value === 'available'
-})
-
 watch(
   [mode, displayName],
   ([m, name]) => {
@@ -146,14 +140,16 @@ watch(
     }
     nameStatus.value = 'checking'
     const query = trimmed
-    nameCheckTimer = setTimeout(async () => {
-      const available = await checkDisplayNameAvailability(query)
-      if ((displayName.value || '').trim() !== query) return
-      nameStatus.value = available ? 'available' : 'taken'
-    }, 250)
+nameCheckTimer = setTimeout(async () => {
+  const available = await checkDisplayNameAvailability(query)
+  if ((displayName.value || '').trim() !== query) return
+  nameStatus.value = available ? 'available' : 'taken'
+}, 250)
   },
   { immediate: true }
 )
+
+onUnmounted(() => clearTimeout(nameCheckTimer))
 
 async function submit() {
   loading.value = true
