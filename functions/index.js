@@ -24,7 +24,8 @@ const FieldValue = admin.firestore.FieldValue
 let mailTransporter = null
 function getMailTransporter() {
   if (mailTransporter) return mailTransporter
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_SECURE } = process.env
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_SECURE } =
+    process.env
   if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
     logger.warn('SMTP configuration missing; report emails disabled')
     return null
@@ -277,9 +278,10 @@ exports.photoLikesTally = onDocumentWritten(
     const ref = db.collection('photos').doc(photoId)
     await db.runTransaction(async (tx) => {
       const snap = await tx.get(ref)
-      const current = snap.exists && typeof snap.get('likesCount') === 'number'
-        ? snap.get('likesCount')
-        : 0
+      const current =
+        snap.exists && typeof snap.get('likesCount') === 'number'
+          ? snap.get('likesCount')
+          : 0
       const next = Math.max(0, current + delta)
       tx.set(
         ref,
@@ -315,7 +317,8 @@ exports.cleanupPhoto = onDocumentDeleted('photos/{photoId}', async (event) => {
 
 exports.submitParkReport = onCall(async (request) => {
   const uid = request.auth?.uid
-  if (!uid) throw new HttpsError('unauthenticated', 'Please sign in to report updates.')
+  if (!uid)
+    throw new HttpsError('unauthenticated', 'Please sign in to report updates.')
 
   const { message, parkId, parkName, pageUrl, trap } = request.data || {}
   if (!parkId || typeof parkId !== 'string') {
@@ -327,7 +330,10 @@ exports.submitParkReport = onCall(async (request) => {
   }
   const body = typeof message === 'string' ? message.trim() : ''
   if (body.length < 10 || body.length > 4000) {
-    throw new HttpsError('invalid-argument', 'Please include a short description (10+ characters).')
+    throw new HttpsError(
+      'invalid-argument',
+      'Please include a short description (10+ characters).'
+    )
   }
 
   const userRecord = await admin
@@ -346,7 +352,10 @@ exports.submitParkReport = onCall(async (request) => {
 
   const transporter = getMailTransporter()
   if (!transporter) {
-    throw new HttpsError('failed-precondition', 'Reporting is temporarily unavailable.')
+    throw new HttpsError(
+      'failed-precondition',
+      'Reporting is temporarily unavailable.'
+    )
   }
 
   try {
@@ -359,7 +368,11 @@ exports.submitParkReport = onCall(async (request) => {
     logger.info('Park report sent', { uid, parkId })
     return { delivered: true }
   } catch (err) {
-    logger.error('Failed to send park report', { uid, parkId, err: String(err) })
+    logger.error('Failed to send park report', {
+      uid,
+      parkId,
+      err: String(err),
+    })
     throw new HttpsError('internal', 'Could not send report right now.')
   }
 })

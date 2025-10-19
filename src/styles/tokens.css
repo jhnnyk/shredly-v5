@@ -115,6 +115,7 @@ select {
   border-radius: var(--radius-lg);
   border: 1px solid var(--outline);
   color: var(--text);
+  background: var(--bg);
   padding: 12px 16px;
   outline: none;
 }
@@ -469,4 +470,10 @@ select {
 .feedback {
   font-size: 12px;
   text-align: right;
+}
+
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 12px 0;
 }

@@ -94,8 +94,11 @@
         >
       </div>
 
-      <div class="feedback">
+      <div class="mt-16 feedback">
         <a href="#" @click.prevent="onReport">Report a problem / update</a>
+        <div v-if="reportSuccess" class="success mt-4">
+          Thanks! We’ll check it out.
+        </div>
       </div>
     </div>
 
@@ -256,7 +259,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed, watch, nextTick } from 'vue'
+import { onMounted, ref, computed, watch, nextTick, onUnmounted } from 'vue'
 import {
   collection,
   query,
@@ -304,6 +307,8 @@ const reportError = ref('')
 const reportSending = ref(false)
 const reportBackdropRef = ref(null)
 const reportMessageRef = ref(null)
+const reportSuccess = ref(false)
+let reportSuccessTimer = null
 const photoOrder = ref([])
 
 onMounted(async () => {
@@ -478,12 +483,20 @@ async function submitReport() {
     })
     reportSending.value = false
     closeReport()
+    reportSuccess.value = true
+    clearTimeout(reportSuccessTimer)
+    reportSuccessTimer = setTimeout(() => {
+      reportSuccess.value = false
+    }, 4000)
   } catch (err) {
     reportError.value =
       err?.message || 'Could not send report. Please try again.'
     reportSending.value = false
+    reportSuccess.value = false
   }
 }
+
+onUnmounted(() => clearTimeout(reportSuccessTimer))
 
 async function toggleLike(photoId) {
   if (!auth.user) return goToAuth()
