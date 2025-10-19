@@ -465,3 +465,8 @@ select {
 .table tbody tr + tr td {
   border-top: 1px solid var(--outline);
 }
+
+.feedback {
+  font-size: 12px;
+  text-align: right;
+}

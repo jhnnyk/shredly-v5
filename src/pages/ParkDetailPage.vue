@@ -93,6 +93,9 @@
           >Edit</RouterLink
         >
       </div>
+      <div class="mt-16 feedback">
+        <a href="#">Report a problem / update</a>
+      </div>
     </div>
 
     <div class="details">
@@ -249,9 +252,7 @@ onMounted(async () => {
     orderBy('createdAt', 'desc')
   )
   onSnapshot(q, (snap) => {
-    const list = snap.docs
-      .map((d) => normalizePhotoDoc(d))
-      .filter(Boolean)
+    const list = snap.docs.map((d) => normalizePhotoDoc(d)).filter(Boolean)
     if (!photoOrder.value.length) {
       photoOrder.value = sortPhotosByLikes(list).map((p) => p.id)
     }
