@@ -8,8 +8,29 @@ import {
   getIdTokenResult,
   updateProfile,
 } from 'firebase/auth'
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
+import {
+  doc,
+  getDoc,
+  setDoc,
+  serverTimestamp,
+  collection,
+  query,
+  where,
+  limit,
+  getDocs,
+} from 'firebase/firestore'
 import { useVisitedStore } from './visitedStore'
+
+async function isDisplayNameAvailable(rawName, uid) {
+  const base = (rawName || '').trim()
+  if (!base) return false
+  const users = collection(db, 'users')
+  const snap = await getDocs(
+    query(users, where('displayName', '==', base), limit(1))
+  )
+  if (!snap.size) return true
+  return snap.docs[0].id === uid
+}
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -64,6 +85,8 @@ export const useAuthStore = defineStore('auth', {
       const dn = (rawDisplayName || '').trim().replace(/\s+/g, ' ')
       if (dn.length < 2 || dn.length > 30)
         throw new Error('Display name must be 2–30 characters.')
+      const available = await isDisplayNameAvailable(dn)
+      if (!available) throw new Error('That display name is taken. Pick another.')
       const cred = await createUserWithEmailAndPassword(auth, email, password)
       await updateProfile(cred.user, { displayName: dn })
       const ref = doc(db, 'users', cred.user.uid)
@@ -84,3 +107,7 @@ export const useAuthStore = defineStore('auth', {
     },
   },
 })
+
+export async function checkDisplayNameAvailability(name, uid) {
+  return isDisplayNameAvailable(name, uid)
+}

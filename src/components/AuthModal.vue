@@ -22,6 +22,15 @@
           autocomplete="nickname"
           required
         />
+        <p class="hint" aria-live="polite">
+          <span v-if="nameStatus === 'checking'">Checking availability…</span>
+          <span v-else-if="nameStatus === 'taken'" class="error"
+            >That name is taken.</span
+          >
+          <span v-else-if="nameStatus === 'available'" class="success"
+            >Name is available!</span
+          >
+        </p>
       </div>
 
       <div class="mt-16">
@@ -51,7 +60,10 @@
         <button
           class="btn btn-primary"
           @click="submit"
-          :disabled="loading || (mode === 'signup' && !isDisplayNameValid)"
+          :disabled="
+            loading ||
+            (mode === 'signup' && !canSubmitSignup && nameStatus !== 'idle')
+          "
         >
           {{ mode === 'login' ? 'Log in' : 'Sign up' }}
         </button>
@@ -77,6 +89,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { useAuthStore } from '../store/authStore'
+import { checkDisplayNameAvailability } from '../store/authStore'
 
 // accept a mode prop from the parent
 const props = defineProps({
@@ -101,11 +114,46 @@ const displayName = ref('')
 const loading = ref(false)
 const error = ref('')
 const message = ref('')
+const nameStatus = ref('idle')
+let nameCheckTimer = null
 
 const isDisplayNameValid = computed(() => {
   const v = (displayName.value || '').trim()
   return v.length >= 2 && v.length <= 30 && /^[\w\-\.' ]+$/.test(v)
 })
+
+const canSubmitSignup = computed(() => {
+  if (!isDisplayNameValid.value) return false
+  return nameStatus.value === 'available'
+})
+
+watch(
+  [mode, displayName],
+  ([m, name]) => {
+    if (m !== 'signup') {
+      nameStatus.value = 'idle'
+      return
+    }
+    const trimmed = (name || '').trim()
+    clearTimeout(nameCheckTimer)
+    if (!trimmed) {
+      nameStatus.value = 'idle'
+      return
+    }
+    if (!isDisplayNameValid.value) {
+      nameStatus.value = 'invalid'
+      return
+    }
+    nameStatus.value = 'checking'
+    const query = trimmed
+    nameCheckTimer = setTimeout(async () => {
+      const available = await checkDisplayNameAvailability(query)
+      if ((displayName.value || '').trim() !== query) return
+      nameStatus.value = available ? 'available' : 'taken'
+    }, 250)
+  },
+  { immediate: true }
+)
 
 async function submit() {
   loading.value = true
@@ -120,7 +168,13 @@ async function submit() {
       if (!isDisplayNameValid.value) {
         throw new Error('Please enter a display name (2–30 characters).')
       }
-      await auth.signup(email.value, password.value, displayName.value)
+      const trimmed = (displayName.value || '').trim()
+      const available = await checkDisplayNameAvailability(trimmed)
+      if (!available) {
+        nameStatus.value = 'taken'
+        throw new Error('That display name is already taken. Choose another.')
+      }
+      await auth.signup(email.value, password.value, trimmed)
       emit('close')
     }
   } catch (e) {
